@@ -7,21 +7,31 @@ import (
 
 type Policy struct {
 	wl    []*net.IPNet
-	bl    []*net.IPNet
 	rules []Rule
 }
 
-func (p *Policy) checkRequest(r *http.Request) []Action {
+func (p *Policy) checkRequest(w http.ResponseWriter, r *http.Request) []Action {
 
 	var actions []Action
 
-	// check WL
-
-	// check ip in BL
-
-	// go for all rules in []rules
-	// add actions to result
-	// return Actions
+	ipStr, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip := net.ParseIP(ipStr)
+	if p.wl != nil {
+		if ok := checkInList(p.wl, ip); ok {
+			return nil
+		}
+	}
+	for _, rule := range p.rules {
+		if ok := rule.ruleFunc(r, p); ok {
+			actions = append(actions, rule.actions...)
+		}
+	}
 
 	return actions
+}
+
+func DefaultPolicy() Policy {
+	rules := InitRules()
+	var p = Policy{nil, rules}
+	return p
 }

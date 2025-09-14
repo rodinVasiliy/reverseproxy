@@ -1,0 +1,48 @@
+package config
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/oschwald/geoip2-golang"
+)
+
+type Rule struct {
+	name     string
+	actions  []Action
+	ruleFunc func(r *http.Request, policy *Policy) bool
+}
+
+var geoDB *geoip2.Reader
+
+func GEO() func(r *http.Request, policy *Policy) bool {
+	return func(r *http.Request, policy *Policy) bool {
+		ip := getIpFromRequest(r)
+		record, err := geoDB.Country(ip)
+		if err != nil || record == nil || record.Country.IsoCode != "RU" {
+			return true
+		}
+		return false
+	}
+}
+
+func InitRules() []Rule {
+	var err error
+	geoDB, err = geoip2.Open("GeoLite2-Country.mmdb")
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("Geo base successfully loaded")
+	}
+	actions := InitActions()
+	// to do мб базу надо в другом месте закрывать, т.к. тут она может сразу закрыться
+	defer geoDB.Close()
+	return []Rule{
+		{
+			name:     "GEO",
+			actions:  actions,
+			ruleFunc: GEO(),
+		},
+	}
+}
