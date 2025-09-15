@@ -45,3 +45,7 @@ func InitActions() []Action {
 		},
 	}
 }
+
+func (a *Action) DoAction(w http.ResponseWriter, r *http.Request) {
+	a.action(w, r)
+}

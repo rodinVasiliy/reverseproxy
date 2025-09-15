@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 )
@@ -30,6 +31,8 @@ func (c *Config) Get(domain string) *WebApp {
 	}
 }
 
+// в дальнейшем сделать добавление из веба, а потом добавить импорт/экспорт настроек
+// на данном этапе чисто тестовый вариант
 func InitConfig() (*Config, error) {
 	cfg := make(map[string]*WebApp, 5)
 	domain := "myproxytest.site"
@@ -39,8 +42,10 @@ func InitConfig() (*Config, error) {
 	}
 	policy := DefaultPolicy()
 	// мб экранировать
-	var ssl = SSLConfiguration{"/etc/letsencrypt/live/myproxytest.site/fullchain.pem",
-		"/etc/letsencrypt/live/myproxytest.site/privkey.pem"}
+	ssl := SSLConfiguration{
+		certPath: "/etc/letsencrypt/live/myproxytest.site/fullchain.pem",
+		keyPath:  "/etc/letsencrypt/live/myproxytest.site/privkey.pem",
+	}
 	var webApp = WebApp{&policy, upstream, &ssl, httputil.NewSingleHostReverseProxy(upstream)}
 	cfg[domain] = &webApp
 	return &Config{configs: cfg}, nil
@@ -60,4 +65,10 @@ func GetUpstreams(cfg *Config) []*url.URL {
 func (cfg *Config) GetReverseProxyForHost(domain string) *httputil.ReverseProxy {
 	wa := cfg.configs[domain]
 	return wa.proxy
+}
+
+func (cfg *Config) CheckRequest(w http.ResponseWriter, r *http.Request) []Action {
+	host := r.URL.Host
+	wa := cfg.configs[host]
+	return wa.pol.checkRequest(w, r)
 }

@@ -27,17 +27,24 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 	}
 }
 
+func CloseGeoDB() {
+	if geoDB != nil {
+		geoDB.Close()
+	}
+}
+
 func InitRules() []Rule {
 	var err error
-	geoDB, err = geoip2.Open("GeoLite2-Country.mmdb")
+	geoDB, err = geoip2.Open("config/dbip-country-lite-2025-09.mmdb")
 	if err != nil {
 		log.Fatal(err)
 	} else {
 		fmt.Println("Geo base successfully loaded")
 	}
+
 	actions := InitActions()
 	// to do мб базу надо в другом месте закрывать, т.к. тут она может сразу закрыться
-	defer geoDB.Close()
+
 	return []Rule{
 		{
 			name:     "GEO",
