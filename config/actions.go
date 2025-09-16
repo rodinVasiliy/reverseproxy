@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var logFileName = "db.log"
+
 type Action struct {
 	name   string                                   // название action
 	rule   string                                   // название правила
@@ -19,10 +21,14 @@ func LogToDB(rule string) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+func (a *Action) Name() string {
+	return a.name
+}
+
 // to do add action send to BL
 
 func initLogFile() {
-	file, err := os.OpenFile("db.log",
+	file, err := os.OpenFile(logFileName,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)

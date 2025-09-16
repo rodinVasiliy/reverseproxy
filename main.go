@@ -24,8 +24,10 @@ func main() {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sendThroughPolicy(w, r, config)
+
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
+
 		proxy := getProxyForRequest(r, config)
 		proxy.ServeHTTP(w, r)
 	})
