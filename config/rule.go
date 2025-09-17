@@ -20,10 +20,11 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 	return func(r *http.Request, policy *Policy) bool {
 		ip := getIpFromRequest(r)
 		record, err := geoDB.Country(ip)
+		// блокируем РФ, остальное - пропускаем
 		if err != nil || record == nil || record.Country.IsoCode != "RU" {
-			return true
+			return false
 		}
-		return false
+		return true
 	}
 }
 
