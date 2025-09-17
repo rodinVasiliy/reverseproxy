@@ -26,6 +26,7 @@ func main() {
 
 	// порт который использует прокси сервер, мы будем передавать его в заголовок, просто для инфо
 	port := flag.Int("port", 9001, "Port for proxy serv")
+	flag.Parse()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sendThroughPolicy(w, r, config)
@@ -48,21 +49,21 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("Starting proxy on %s\n", addr)
+		fmt.Printf("Starting proxy on %s\n", addr)
 		if err := http.ListenAndServe(addr, handler); err != nil {
-			log.Fatalf("Server failed: %v", err)
+			fmt.Printf("Server failed: %v", err)
 		}
 	}()
 
 	<-stop
-	log.Println("Shitting down the server...")
+	fmt.Println("Shitting down the server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Закрываем сервер
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
 	cfg.CloseGeoDB()
