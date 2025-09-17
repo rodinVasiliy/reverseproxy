@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"os"
+	"os/signal"
 	cfg "reverseproxy/config"
+	"syscall"
+	"time"
 )
 
 // TO DO протестировать
@@ -33,13 +38,36 @@ func main() {
 	})
 
 	addr := fmt.Sprintf(":%d", *port)
-	log.Printf("Starting proxy on %s\n", addr)
 
-	if err := http.ListenAndServe(addr, handler); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("Starting proxy on %s\n", addr)
+		if err := http.ListenAndServe(addr, handler); err != nil {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	<-stop
+	log.Println("Shitting down the server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Закрываем сервер
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
 	cfg.CloseGeoDB()
+
+	log.Println("Server stopped")
 }
 
 func getProxyForRequest(r *http.Request, cfg *cfg.Config) *httputil.ReverseProxy {

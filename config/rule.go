@@ -30,6 +30,7 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 func CloseGeoDB() {
 	if geoDB != nil {
 		geoDB.Close()
+		fmt.Println("geo base closed")
 	}
 }
 
