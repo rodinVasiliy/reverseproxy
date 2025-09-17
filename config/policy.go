@@ -14,8 +14,7 @@ func (p *Policy) checkRequest(w http.ResponseWriter, r *http.Request) []Action {
 
 	var uniqueActions = make(map[string]Action)
 
-	ipStr, _, _ := net.SplitHostPort(r.RemoteAddr)
-	ip := net.ParseIP(ipStr)
+	ip := getIpFromRequest(r)
 
 	// Белый список: если IP в whitelist → сразу пропускаем
 	if p.wl != nil {

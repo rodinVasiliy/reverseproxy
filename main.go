@@ -29,12 +29,14 @@ func main() {
 	flag.Parse()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
+
 		sendThroughPolicy(w, r, config)
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
-		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
 
 		proxy := getProxyForRequest(r, config)
+		log.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
 
@@ -50,7 +52,7 @@ func main() {
 
 	go func() {
 		fmt.Printf("Starting proxy on %s\n", addr)
-		if err := http.ListenAndServe(addr, handler); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Server failed: %v", err)
 		}
 	}()
@@ -72,7 +74,7 @@ func main() {
 }
 
 func getProxyForRequest(r *http.Request, cfg *cfg.Config) *httputil.ReverseProxy {
-	host := r.URL.Host
+	host := r.Host
 	proxy := cfg.GetReverseProxyForHost(host)
 	return proxy
 }
