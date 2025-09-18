@@ -72,6 +72,7 @@ func main() {
 	}
 
 	cfg.CloseGeoDB()
+	cfg.CloseLogFile()
 
 	log.Println("Server stopped")
 }
