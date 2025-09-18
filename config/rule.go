@@ -11,7 +11,7 @@ import (
 type Rule struct {
 	name     string
 	actions  []Action
-	ruleFunc func(r *http.Request, policy *Policy) bool
+	ruleFunc func(r *http.Request, policy *Policy) bool // true - если запрос попадает под правило. false - иначе.
 }
 
 var geoDB *geoip2.Reader
@@ -20,30 +20,24 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 	return func(r *http.Request, policy *Policy) bool {
 		ip := getIpFromRequest(r)
 		record, err := geoDB.Country(ip)
-		// блокируем РФ, остальное - пропускаем
+
+		// блокируем(пока только логируем) РФ, остальное - пропускаем
 		// поделить на секции чтобы видеть когда ошибка, а когда запись nil и когда уже норм отработала база.
 
 		if err != nil {
-			log.Println("error reading geo base for request. Request will be blocked by GEO")
 			fmt.Println("error reading geo base for request. Request will be blocked by GEO")
-			return false
+			return true
 		}
 
 		if record == nil {
-			log.Println("record is nil. Request will be blocked by GEO")
 			fmt.Println("record is nil. Request will be blocked by GEO")
-			return false
+			return true
 		}
 
-		fmt.Printf("GEO code for ip %s is %s", ip.String(), record.Country.IsoCode)
-		if record.Country.IsoCode != "RU" {
-			fmt.Println("Geo is not Russia. Request will be not blocked by GEO")
-			log.Println("Geo is not Russia. Request will be not blocked by GEO")
-			return false
+		if record.Country.IsoCode == "RU" {
+			return true
 		}
 
-		fmt.Println("Geo is Russia, Request will be blocked by GEO")
-		log.Println("Geo is Russia, Request will be blocked by GEO")
 		return false
 	}
 }
