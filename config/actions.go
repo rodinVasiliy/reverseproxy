@@ -3,22 +3,27 @@ package config
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 )
 
 var logFileName = "log\\db.log"
 
 type Action struct {
-	name   string                                   // название action
-	rule   string                                   // название правила
-	action func(http.ResponseWriter, *http.Request) // то, что делает сам action
+	name   string                 // название action
+	action func(ap *ActionParams) //  то, что делает сам action
 }
 
-func LogToDB(rule string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ip := getIpFromRequest(r)
+func LogToDB() func(*ActionParams) {
+	return func(ap *ActionParams) {
+		ip := ap.rp.ip
+		rule := ap.rule
 		log.Printf("ip: %s rule: %s", ip, rule)
+	}
+}
+
+func BlockRequest() func(*ActionParams) {
+	return func(ap *ActionParams) {
+		// тут ничего не надо, этот action служит сигналом, что запрос надо блокировать на WAF/Proxy
 	}
 }
 
@@ -47,12 +52,15 @@ func InitActions() []Action {
 	return []Action{
 		{
 			name:   "Log to DB",
-			rule:   "",
-			action: LogToDB(""),
+			action: LogToDB(),
+		},
+		{
+			name:   "Block Request",
+			action: BlockRequest(),
 		},
 	}
 }
 
-func (a *Action) DoAction(w http.ResponseWriter, r *http.Request) {
-	a.action(w, r)
+func (a *Action) DoAction(ap *ActionParams) {
+	a.action(ap)
 }

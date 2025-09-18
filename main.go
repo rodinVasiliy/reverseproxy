@@ -31,7 +31,9 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
 
-		sendThroughPolicy(w, r, config)
+		if !sendThroughPolicy(r, config) {
+			http.Error(w, "Access Denied", http.StatusForbidden)
+		}
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
 
@@ -80,9 +82,8 @@ func getProxyForRequest(r *http.Request, cfg *cfg.Config) *httputil.ReverseProxy
 	return proxy
 }
 
-func sendThroughPolicy(w http.ResponseWriter, r *http.Request, cfg *cfg.Config) {
-	actions := cfg.CheckRequest(w, r)
-	for _, act := range actions {
-		act.DoAction(w, r)
-	}
+func sendThroughPolicy(r *http.Request, cfg *cfg.Config) bool {
+	host := r.Host
+	policy := cfg.GetPolicyForHost(host)
+	return policy.CheckRequest(r)
 }

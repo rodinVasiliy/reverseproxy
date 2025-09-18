@@ -10,36 +10,60 @@ type Policy struct {
 	rules []Rule
 }
 
-func (p *Policy) checkRequest(w http.ResponseWriter, r *http.Request) []Action {
+// проверяем, нужно ли блокировать реквест
+// + проходим все actions, которые вернули правила.
+func (p *Policy) CheckRequest(r *http.Request) bool {
+
+	parsedRequest := ParseRequest(r)
 
 	var uniqueActions = make(map[string]Action)
 
-	ip := getIpFromRequest(r)
+	ip := parsedRequest.ip
 
 	// Белый список: если IP в whitelist → сразу пропускаем
 	if p.wl != nil {
 		if ok := checkInList(p.wl, ip); ok {
-			return nil
+			return true
 		}
 	}
 
 	// Пробегаем по правилам
+	// попробовать распараллелить, получив например количество правил и распределив по потокам...
 	for _, rule := range p.rules {
-		if ok := rule.ruleFunc(r, p); ok {
+		if ok := rule.ruleFunc(parsedRequest, p); ok {
 			for _, act := range rule.actions {
-				// используем имя/идентификатор действия как ключ
-				uniqueActions[act.Name()] = act
+				// логируем сразу(так проще, пока не придумал как это еще делать)
+				if act.Name() == "Log to DB" {
+					act.DoAction(&ActionParams{
+						rule: rule.name,
+						rp:   parsedRequest,
+					})
+				} else { // если не логируем - кладем в список функций которые будем выполнять,
+					// нужно чтобы каждая выполнилась 1 раз, без повторений
+					uniqueActions[act.Name()] = act
+				}
 			}
 		}
 	}
 
-	// Конвертируем map → slice
-	var actions []Action
-	for _, act := range uniqueActions {
-		actions = append(actions, act)
+	var blockRequest = false
+
+	// если был блок - значит говорим, что запрос нужно блокировать
+	// убираем этот Action, так как он просто сигнал для нас
+	if _, ok := uniqueActions["Block Request"]; ok {
+		blockRequest = true
+		delete(uniqueActions, "Block Request")
 	}
 
-	return actions
+	ap := ActionParams{
+		rule: "",
+		rp:   parsedRequest,
+	}
+	for _, act := range uniqueActions {
+		act.DoAction(&ap)
+	}
+
+	return blockRequest
 }
 
 func DefaultPolicy() Policy {

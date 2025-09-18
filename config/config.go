@@ -2,8 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 )
@@ -68,11 +66,7 @@ func (cfg *Config) GetReverseProxyForHost(domain string) *httputil.ReverseProxy 
 	return wa.proxy
 }
 
-func (cfg *Config) CheckRequest(w http.ResponseWriter, r *http.Request) []Action {
-	host := r.Host
-	wa, ok := cfg.configs[host]
-	if !ok {
-		log.Printf("failed to find upstream for request Method: %s Host: %s URL.Host: %s", r.Method, r.Host, r.URL.Host)
-	}
-	return wa.pol.checkRequest(w, r)
+func (cfg *Config) GetPolicyForHost(domain string) *Policy {
+	wa := cfg.configs[domain]
+	return wa.pol
 }

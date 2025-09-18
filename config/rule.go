@@ -3,22 +3,21 @@ package config
 import (
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/oschwald/geoip2-golang"
 )
 
 type Rule struct {
 	name     string
-	actions  []Action
-	ruleFunc func(r *http.Request, policy *Policy) bool // true - если запрос попадает под правило. false - иначе.
+	actions  []Action                                     // то, что висит на самом правиле, от этого зависит, что будет происходить, если запрос попадет под правило.
+	ruleFunc func(rp *RequestParams, policy *Policy) bool // true - если запрос попадает под правило. false - иначе.
 }
 
 var geoDB *geoip2.Reader
 
-func GEO() func(r *http.Request, policy *Policy) bool {
-	return func(r *http.Request, policy *Policy) bool {
-		ip := getIpFromRequest(r)
+func GEO() func(rp *RequestParams, policy *Policy) bool {
+	return func(rp *RequestParams, policy *Policy) bool {
+		ip := rp.ip
 		record, err := geoDB.Country(ip)
 
 		// блокируем(пока только логируем) РФ, остальное - пропускаем
