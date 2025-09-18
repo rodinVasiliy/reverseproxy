@@ -13,6 +13,7 @@ type Rule struct {
 	ruleFunc func(rp *RequestParams, policy *Policy) bool // true - если запрос попадает под правило. false - иначе.
 }
 
+// перенести в config
 var geoDB *geoip2.Reader
 
 func GEO() func(rp *RequestParams, policy *Policy) bool {

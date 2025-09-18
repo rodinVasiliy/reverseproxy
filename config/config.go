@@ -6,11 +6,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path/filepath"
 )
 
 // key - domain value - webapplication
 type Config struct {
 	configs map[string]*WebApp
+	logFile *os.File
 }
 
 type SSLConfiguration struct {
@@ -34,7 +36,10 @@ func (c *Config) Get(domain string) *WebApp {
 
 // в дальнейшем сделать добавление из веба, а потом добавить импорт/экспорт настроек
 // на данном этапе чисто тестовый вариант
-func InitConfig() (*Config, error) {
+func InitConfig(port int) (*Config, error) {
+
+	logFile := initLogFile(port)
+
 	cfg := make(map[string]*WebApp, 5)
 	domain := "myproxytest.site"
 	upstream, err := url.Parse("http://localhost:9091")
@@ -49,7 +54,7 @@ func InitConfig() (*Config, error) {
 	}
 	var webApp = WebApp{&policy, upstream, &ssl, httputil.NewSingleHostReverseProxy(upstream)}
 	cfg[domain] = &webApp
-	return &Config{configs: cfg}, nil
+	return &Config{configs: cfg, logFile: logFile}, nil
 }
 
 func GetUpstreams(cfg *Config) []*url.URL {
@@ -73,11 +78,10 @@ func (cfg *Config) GetPolicyForHost(domain string) *Policy {
 	return wa.pol
 }
 
-var logFile *os.File
-var logFileName = "log\\db.log"
-
-func initLogFile() {
+func initLogFile(port int) *os.File {
+	logFileName := filepath.Join("log", fmt.Sprintf("db_%d.log", port))
 	var err error
+	var logFile *os.File
 	logFile, err = os.OpenFile(logFileName,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -86,10 +90,12 @@ func initLogFile() {
 
 	// Настраиваем логгер на запись в файл
 	log.SetOutput(logFile)
+	return logFile
 }
 
-func CloseLogFile() {
-	if logFile != nil {
-		logFile.Close()
+func (cfg *Config) CloseLogFile() {
+	if cfg.logFile != nil {
+		cfg.logFile.Close()
+		fmt.Println("log file closed")
 	}
 }

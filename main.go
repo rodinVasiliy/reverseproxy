@@ -16,17 +16,19 @@ import (
 
 // TO DO протестировать
 func main() {
+
 	fmt.Println("reverse proxy ...")
-	fmt.Println("Config Initialization started...")
-	config, err := cfg.InitConfig()
-	if err != nil {
-		fmt.Printf("failed to read config %s", err)
-	}
-	fmt.Println("Config successfully loaded")
 
 	// порт который использует прокси сервер, мы будем передавать его в заголовок, просто для инфо
 	port := flag.Int("port", 9001, "Port for proxy serv")
 	flag.Parse()
+
+	fmt.Println("Config Initialization started...")
+	config, err := cfg.InitConfig(*port)
+	if err != nil {
+		fmt.Printf("failed to read config %s", err)
+	}
+	fmt.Println("Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
@@ -72,7 +74,7 @@ func main() {
 	}
 
 	cfg.CloseGeoDB()
-	cfg.CloseLogFile()
+	config.CloseLogFile()
 
 	log.Println("Server stopped")
 }
