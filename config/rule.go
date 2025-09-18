@@ -21,6 +21,7 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 		ip := getIpFromRequest(r)
 		record, err := geoDB.Country(ip)
 		// блокируем РФ, остальное - пропускаем
+		// поделить на секции чтобы видеть когда ошибка, а когда запись nil и когда уже норм отработала база.
 		if err != nil || record == nil || record.Country.IsoCode != "RU" {
 			fmt.Println("request will be blocked by GEO")
 			return false
@@ -46,7 +47,6 @@ func InitRules() []Rule {
 	}
 
 	actions := InitActions()
-	// to do мб базу надо в другом месте закрывать, т.к. тут она может сразу закрыться
 
 	return []Rule{
 		{

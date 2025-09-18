@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-var logFileName = "db.log"
+var logFileName = "log\\db.log"
 
 type Action struct {
 	name   string                                   // название action
