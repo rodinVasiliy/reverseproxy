@@ -40,7 +40,8 @@ func main() {
 		proxy.ServeHTTP(w, r)
 	})
 
-	addr := fmt.Sprintf(":%d", *port)
+	// слушаем только с nginx
+	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 
 	server := &http.Server{
 		Addr:    addr,

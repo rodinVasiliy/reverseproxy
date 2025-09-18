@@ -6,8 +6,8 @@ import (
 )
 
 func getIpFromRequest(r *http.Request) net.IP {
-	ipStr, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return net.ParseIP(ipStr)
+	xrip := r.Header.Get("X-Real-IP")
+	return net.ParseIP(xrip)
 }
 
 func checkInList(list []*net.IPNet, ip net.IP) bool {
