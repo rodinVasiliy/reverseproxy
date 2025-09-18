@@ -1,12 +1,8 @@
 package config
 
 import (
-	"fmt"
 	"log"
-	"os"
 )
-
-var logFileName = "log\\db.log"
 
 type Action struct {
 	name   string                 // название action
@@ -30,22 +26,6 @@ func BlockRequest() func(*ActionParams) {
 func (a *Action) Name() string {
 	return a.name
 }
-
-// to do add action send to BL
-
-func initLogFile() {
-	file, err := os.OpenFile(logFileName,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Printf("Failed to open log file: %v", err)
-	}
-	defer file.Close()
-
-	// Настраиваем логгер на запись в файл
-	log.SetOutput(file)
-}
-
-// to do add action block request
 
 func InitActions() []Action {
 	initLogFile()

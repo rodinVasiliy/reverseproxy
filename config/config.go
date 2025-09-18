@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"net/http/httputil"
 	"net/url"
+	"os"
 )
 
 // key - domain value - webapplication
@@ -69,4 +71,24 @@ func (cfg *Config) GetReverseProxyForHost(domain string) *httputil.ReverseProxy 
 func (cfg *Config) GetPolicyForHost(domain string) *Policy {
 	wa := cfg.configs[domain]
 	return wa.pol
+}
+
+var logFile *os.File
+var logFileName = "log\\db.log"
+
+func initLogFile() {
+	logFile, err := os.OpenFile(logFileName,
+		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Failed to open log file: %v", err)
+	}
+
+	// Настраиваем логгер на запись в файл
+	log.SetOutput(logFile)
+}
+
+func CloseLogFile() {
+	if logFile != nil {
+		logFile.Close()
+	}
 }
