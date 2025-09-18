@@ -77,7 +77,8 @@ var logFile *os.File
 var logFileName = "log\\db.log"
 
 func initLogFile() {
-	logFile, err := os.OpenFile(logFileName,
+	var err error
+	logFile, err = os.OpenFile(logFileName,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		fmt.Printf("Failed to open log file: %v", err)

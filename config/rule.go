@@ -33,6 +33,7 @@ func GEO() func(rp *RequestParams, policy *Policy) bool {
 			return true
 		}
 
+		// блокируем если РФ(пока только логируем)
 		if record.Country.IsoCode == "RU" {
 			return true
 		}
