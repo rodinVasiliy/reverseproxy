@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 )
@@ -34,6 +35,7 @@ func (p *Policy) CheckRequest(r *http.Request) bool {
 			for _, act := range rule.actions {
 				// логируем сразу(так проще, пока не придумал как это еще делать)
 				if act.Name() == "Log to DB" {
+					fmt.Println("will add raw to db")
 					act.DoAction(&ActionParams{
 						rule: rule.name,
 						rp:   parsedRequest,
