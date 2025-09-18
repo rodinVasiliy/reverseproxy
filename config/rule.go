@@ -35,6 +35,7 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 			return false
 		}
 
+		fmt.Printf("GEO code for ip %s is %s", ip.String(), record.Country.IsoCode)
 		if record.Country.IsoCode != "RU" {
 			fmt.Println("Geo is not Russia. Request will be not blocked by GEO")
 			log.Println("Geo is not Russia. Request will be not blocked by GEO")
