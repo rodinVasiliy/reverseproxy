@@ -58,7 +58,7 @@ func main() {
 	}()
 
 	<-stop
-	fmt.Println("Shitting down the server...")
+	fmt.Println("Shutting down the server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

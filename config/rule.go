@@ -22,11 +22,28 @@ func GEO() func(r *http.Request, policy *Policy) bool {
 		record, err := geoDB.Country(ip)
 		// блокируем РФ, остальное - пропускаем
 		// поделить на секции чтобы видеть когда ошибка, а когда запись nil и когда уже норм отработала база.
-		if err != nil || record == nil || record.Country.IsoCode != "RU" {
-			fmt.Println("request will be blocked by GEO")
+
+		if err != nil {
+			log.Println("error reading geo base for request. Request will be blocked by GEO")
+			fmt.Println("error reading geo base for request. Request will be blocked by GEO")
 			return false
 		}
-		return true
+
+		if record == nil {
+			log.Println("record is nil. Request will be blocked by GEO")
+			fmt.Println("record is nil. Request will be blocked by GEO")
+			return false
+		}
+
+		if record.Country.IsoCode != "RU" {
+			fmt.Println("Geo is not Russia. Request will be not blocked by GEO")
+			log.Println("Geo is not Russia. Request will be not blocked by GEO")
+			return false
+		}
+
+		fmt.Println("Geo is Russia, Request will be blocked by GEO")
+		log.Println("Geo is Russia, Request will be blocked by GEO")
+		return false
 	}
 }
 
