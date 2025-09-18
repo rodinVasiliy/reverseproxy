@@ -28,7 +28,6 @@ func (a *Action) Name() string {
 }
 
 func InitActions() []Action {
-	initLogFile()
 	return []Action{
 		{
 			name:   "Log to DB",
