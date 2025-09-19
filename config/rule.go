@@ -16,7 +16,7 @@ type Rule struct {
 // перенести в config
 var geoDB *geoip2.Reader
 
-func GEO() func(rp *RequestParams, policy *Policy) bool {
+func blockByGeoIp() func(rp *RequestParams, policy *Policy) bool {
 	return func(rp *RequestParams, policy *Policy) bool {
 		ip := rp.ip
 		record, err := geoDB.Country(ip)
@@ -65,7 +65,7 @@ func InitRules() []Rule {
 		{
 			name:     "GEO",
 			actions:  actions,
-			ruleFunc: GEO(),
+			ruleFunc: blockByGeoIp(),
 		},
 	}
 }

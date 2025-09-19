@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 )
@@ -24,6 +25,7 @@ func (p *Policy) CheckRequest(r *http.Request) bool {
 	// Белый список: если IP в whitelist → сразу пропускаем
 	if p.wl != nil {
 		if ok := checkInList(p.wl, ip); ok {
+			log.Printf("request will be passed by policy. IP %s in wl", ip.String())
 			return true
 		}
 	}
@@ -68,8 +70,18 @@ func (p *Policy) CheckRequest(r *http.Request) bool {
 	return blockRequest
 }
 
-func DefaultPolicy() Policy {
+func DefaultPolicy() (*Policy, error) {
 	rules := InitRules()
-	var p = Policy{nil, rules}
-	return p
+
+	// WL(пока что тестовый)
+	var wl []*net.IPNet
+	wlCidr := "109.169.245.0/24"
+	_, ipnet, err := net.ParseCIDR(wlCidr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing WL")
+	}
+	wl = append(wl, ipnet)
+
+	var p = Policy{wl, rules}
+	return &p, nil
 }

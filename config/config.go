@@ -20,40 +20,17 @@ type SSLConfiguration struct {
 	keyPath  string
 }
 
-func (c *Config) Add(domain string, webapplication *WebApp) {
-	// TODO добавить проверку на пустую мапу
-	c.configs[domain] = webapplication
-}
-
-func (c *Config) Get(domain string) *WebApp {
-	val, ok := c.configs[domain]
-	if ok {
-		return val
-	} else {
-		return nil
-	}
-}
-
 // в дальнейшем сделать добавление из веба, а потом добавить импорт/экспорт настроек
 // на данном этапе чисто тестовый вариант
 func InitConfig(port int) (*Config, error) {
-
 	logFile := initLogFile(port)
-
-	cfg := make(map[string]*WebApp, 5)
+	cfg := make(map[string]*WebApp, 5) // пока ограничимся 5-ю приложениями
 	domain := "myproxytest.site"
-	upstream, err := url.Parse("http://localhost:9091")
+	var err error
+	cfg[domain], err = initWebApp()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse upstream")
+		return nil, fmt.Errorf("init webapp error: %s", err)
 	}
-	policy := DefaultPolicy()
-	// мб экранировать
-	ssl := SSLConfiguration{
-		certPath: "/etc/letsencrypt/live/myproxytest.site/fullchain.pem",
-		keyPath:  "/etc/letsencrypt/live/myproxytest.site/privkey.pem",
-	}
-	var webApp = WebApp{&policy, upstream, &ssl, httputil.NewSingleHostReverseProxy(upstream)}
-	cfg[domain] = &webApp
 	return &Config{configs: cfg, logFile: logFile}, nil
 }
 
@@ -93,6 +70,7 @@ func initLogFile(port int) *os.File {
 	return logFile
 }
 
+// TODO подумать, почему я вызываю это в main и делаю метод открытым...
 func (cfg *Config) CloseLogFile() {
 	if cfg.logFile != nil {
 		cfg.logFile.Close()
