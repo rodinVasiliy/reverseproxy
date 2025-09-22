@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -11,8 +10,9 @@ import (
 
 // key - domain value - webapplication
 type Config struct {
-	configs map[string]*WebApp
-	logFile *os.File
+	configs map[string]*WebApp // мапа - ключ - домен, значение - веб приложение
+	logFile *os.File           // файл для лога, у каждой прокси он будет свой, путь зависит от порта на которой работает прокси
+	blFile  *BL
 }
 
 type SSLConfiguration struct {
@@ -23,15 +23,29 @@ type SSLConfiguration struct {
 // в дальнейшем сделать добавление из веба, а потом добавить импорт/экспорт настроек
 // на данном этапе чисто тестовый вариант
 func InitConfig(port int) (*Config, error) {
-	logFile := initLogFile(port)
+	logFile, err := initLogFile(port)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := make(map[string]*WebApp, 5) // пока ограничимся 5-ю приложениями
 	domain := "myproxytest.site"
-	var err error
+
 	cfg[domain], err = initWebApp()
 	if err != nil {
-		return nil, fmt.Errorf("init webapp error: %s", err)
+		return nil, err
 	}
-	return &Config{configs: cfg, logFile: logFile}, nil
+
+	fmt.Println("Loading BL file")
+	blPath := filepath.Join("config", "blacklist.db")
+	bl, err := NewBlacklistStore(blPath)
+	bl.Add("") // TODO добавить ip + протестировать BL
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("BL file successfully loaded")
+
+	return &Config{configs: cfg, logFile: logFile, blFile: bl}, nil
 }
 
 func GetUpstreams(cfg *Config) []*url.URL {
@@ -53,27 +67,4 @@ func (cfg *Config) GetReverseProxyForHost(domain string) *httputil.ReverseProxy 
 func (cfg *Config) GetPolicyForHost(domain string) *Policy {
 	wa := cfg.configs[domain]
 	return wa.pol
-}
-
-func initLogFile(port int) *os.File {
-	logFileName := filepath.Join("log", fmt.Sprintf("db_%d.log", port))
-	var err error
-	var logFile *os.File
-	logFile, err = os.OpenFile(logFileName,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Printf("Failed to open log file: %v", err)
-	}
-
-	// Настраиваем логгер на запись в файл
-	log.SetOutput(logFile)
-	return logFile
-}
-
-// TODO подумать, почему я вызываю это в main и делаю метод открытым...
-func (cfg *Config) CloseLogFile() {
-	if cfg.logFile != nil {
-		cfg.logFile.Close()
-		fmt.Println("log file closed")
-	}
 }

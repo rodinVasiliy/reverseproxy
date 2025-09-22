@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/oschwald/geoip2-golang"
 )
@@ -43,6 +44,23 @@ func blockByGeoIp() func(rp *RequestParams, policy *Policy) bool {
 	}
 }
 
+func blockByUserAgent() func(rp *RequestParams, policy *Policy) bool {
+	return func(rp *RequestParams, policy *Policy) bool {
+		ua := rp.ua
+		// блокируем если UA нет
+		if ua == "" {
+			return true
+		}
+
+		// блокируем если UA не содержит Mozilla/5.0(для нас легитим только браузерные UA)
+		ua = strings.ToLower(ua)
+		if ok := strings.Contains(ua, "Mozilla/5.0"); !ok {
+			return true
+		}
+		return false
+	}
+}
+
 func CloseGeoDB() {
 	if geoDB != nil {
 		geoDB.Close()
@@ -63,9 +81,14 @@ func InitRules() []Rule {
 
 	return []Rule{
 		{
-			name:     "GEO",
+			name:     "block by geo ip",
 			actions:  actions,
 			ruleFunc: blockByGeoIp(),
+		},
+		{
+			name:     "block by user agent",
+			actions:  actions,
+			ruleFunc: blockByUserAgent(),
 		},
 	}
 }

@@ -6,9 +6,11 @@ import (
 )
 
 type RequestParams struct {
-	ip   net.IP
-	host string
-	path string
+	ip      net.IP
+	host    string
+	path    string
+	ua      string
+	cookies []*http.Cookie
 }
 
 type ActionParams struct {
@@ -18,9 +20,11 @@ type ActionParams struct {
 
 func ParseRequest(r *http.Request) *RequestParams {
 	rp := RequestParams{
-		ip:   getIpFromRequest(r),
-		host: r.Host,
-		path: r.URL.RawPath,
+		ip:      getIpFromRequest(r),
+		host:    r.Host,
+		path:    r.URL.RawPath,
+		ua:      r.Header.Get("User-Agent"),
+		cookies: r.Cookies(),
 	}
 	return &rp
 }

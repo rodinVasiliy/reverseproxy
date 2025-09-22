@@ -12,6 +12,8 @@ import (
 	cfg "reverseproxy/config"
 	"syscall"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // TO DO протестировать
@@ -28,6 +30,7 @@ func main() {
 	config, err := cfg.InitConfig(*port)
 	if err != nil {
 		fmt.Printf("failed to read config %s", err)
+		return
 	}
 	fmt.Println("Config successfully loaded")
 
@@ -60,6 +63,7 @@ func main() {
 		fmt.Printf("Starting proxy on %s\n", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Server failed: %v", err)
+			return
 		}
 	}()
 
