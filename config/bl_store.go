@@ -13,10 +13,16 @@ type BL struct {
 
 // Инициализация: подключаемся к базе и создаём таблицу
 func NewBlacklistStore(path string) (*BL, error) {
-	db, err := sql.Open("sqlite3", path)
+	dbPath := path + "?_journal_mode=WAL&_busy_timeout=5000"
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
+
+	// Ограничим пул соединений: для sqlite обычно безопаснее 1
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
 
 	sqlStmt := `
 	CREATE TABLE IF NOT EXISTS blacklist (

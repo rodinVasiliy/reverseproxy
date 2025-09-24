@@ -13,14 +13,14 @@ type WebApp struct {
 	proxy            *httputil.ReverseProxy
 }
 
-func initWebApp() (*WebApp, error) {
+func initWebApp(bl *BL) (*WebApp, error) {
 
 	upstream, err := url.Parse("http://localhost:9091")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse upstream %s", err)
 	}
 
-	policy, err := DefaultPolicy()
+	policy, err := DefaultPolicy(bl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get policy %s", err)
 	}

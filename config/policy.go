@@ -10,6 +10,7 @@ import (
 type Policy struct {
 	wl    []*net.IPNet
 	rules []Rule
+	bl    *BL
 }
 
 // проверяем, нужно ли блокировать реквест
@@ -28,6 +29,16 @@ func (p *Policy) CheckRequest(r *http.Request) bool {
 			log.Printf("request will be passed by policy. IP %s in wl", ip.String())
 			return true
 		}
+	}
+
+	// проверка на наличие в BL, выглядит пока так себе, возможно надо будет менять структуру и логику всего реверс прокси.
+	ok, err := p.bl.Exists(ip.String())
+	if err != nil {
+		log.Printf("failed to check ip in BL %s", err)
+	}
+	if ok {
+		log.Printf("ip %s in BL, request will be blocked", ip.String())
+		return true
 	}
 
 	// Пробегаем по правилам
@@ -70,7 +81,7 @@ func (p *Policy) CheckRequest(r *http.Request) bool {
 	return blockRequest
 }
 
-func DefaultPolicy() (*Policy, error) {
+func DefaultPolicy(bl *BL) (*Policy, error) {
 	rules := InitRules()
 
 	// WL(пока что тестовый)
@@ -82,6 +93,6 @@ func DefaultPolicy() (*Policy, error) {
 	}
 	wl = append(wl, ipnet)
 
-	var p = Policy{wl, rules}
+	var p = Policy{wl, rules, bl}
 	return &p, nil
 }

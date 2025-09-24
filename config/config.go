@@ -12,7 +12,6 @@ import (
 type Config struct {
 	configs map[string]*WebApp // мапа - ключ - домен, значение - веб приложение
 	logFile *os.File           // файл для лога, у каждой прокси он будет свой, путь зависит от порта на которой работает прокси
-	blFile  *BL
 }
 
 type SSLConfiguration struct {
@@ -31,11 +30,6 @@ func InitConfig(port int) (*Config, error) {
 	cfg := make(map[string]*WebApp, 5) // пока ограничимся 5-ю приложениями
 	domain := "myproxytest.site"
 
-	cfg[domain], err = initWebApp()
-	if err != nil {
-		return nil, err
-	}
-
 	fmt.Println("Loading BL file")
 	blPath := filepath.Join("config", "blacklist.db")
 	bl, err := NewBlacklistStore(blPath)
@@ -45,7 +39,12 @@ func InitConfig(port int) (*Config, error) {
 	}
 	fmt.Println("BL file successfully loaded")
 
-	return &Config{configs: cfg, logFile: logFile, blFile: bl}, nil
+	cfg[domain], err = initWebApp(bl)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Config{configs: cfg, logFile: logFile}, nil
 }
 
 func GetUpstreams(cfg *Config) []*url.URL {
