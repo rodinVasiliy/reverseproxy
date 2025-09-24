@@ -37,7 +37,7 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
 
-		if !sendThroughPolicy(r, config) {
+		if isBlockedByPolicy(r, config) {
 			http.Error(w, "Access Denied", http.StatusForbidden)
 		}
 
@@ -90,8 +90,8 @@ func getProxyForRequest(r *http.Request, cfg *cfg.Config) *httputil.ReverseProxy
 	return proxy
 }
 
-func sendThroughPolicy(r *http.Request, cfg *cfg.Config) bool {
+func isBlockedByPolicy(r *http.Request, cfg *cfg.Config) bool {
 	host := r.Host
 	policy := cfg.GetPolicyForHost(host)
-	return policy.CheckRequest(r)
+	return policy.IsBlockedByPolicy(r)
 }

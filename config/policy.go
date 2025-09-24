@@ -15,7 +15,7 @@ type Policy struct {
 
 // проверяем, нужно ли блокировать реквест
 // + проходим все actions, которые вернули правила.
-func (p *Policy) CheckRequest(r *http.Request) bool {
+func (p *Policy) IsBlockedByPolicy(r *http.Request) bool {
 
 	parsedRequest := ParseRequest(r)
 
