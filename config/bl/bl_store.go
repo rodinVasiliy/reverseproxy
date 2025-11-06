@@ -2,7 +2,7 @@ package config
 
 import (
 	"database/sql"
-	"log"
+	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -67,7 +67,7 @@ func (b *BL) Exists(ip string) (bool, error) {
 func (b *BL) Close() {
 	if b.db != nil {
 		if err := b.db.Close(); err != nil {
-			log.Printf("Error closing DB: %v", err)
+			fmt.Printf("Error closing DB: %v", err)
 		}
 	}
 }

@@ -10,6 +10,9 @@ import (
 	"os"
 	"os/signal"
 	cfg "reverseproxy/config"
+	config "reverseproxy/config/mongo_config"
+	"reverseproxy/geo"
+	service "reverseproxy/service"
 	"syscall"
 	"time"
 
@@ -26,8 +29,23 @@ func main() {
 	port := flag.Int("port", 9001, "Port for proxy serv")
 	flag.Parse()
 
+	// загружаем гео базу
+	geo.InitGeo()
+
+	// подключаемся к монгодб
+	mongoDeps, err := config.NewMongoDeps()
+	if err != nil {
+		fmt.Printf("failed to get mongo deps %s", err)
+		// по-хорошему тут закрыть всё то, что выше открыл(гео базу например закрыть, чтобы не было утечек)
+		return
+	}
+
+	actionService := service.NewActionService(mongoDeps)
+	ruleService := service.NewRuleService(mongoDeps, actionService)
+	policyService := service.NewPolicyService(mongoDeps, ruleService)
+
 	fmt.Println("Config Initialization started...")
-	config, err := cfg.InitConfig(*port)
+	config, err := cfg.InitConfig(*port, mongoClient)
 	if err != nil {
 		fmt.Printf("failed to read config %s", err)
 		return
@@ -39,11 +57,13 @@ func main() {
 
 		if isBlockedByPolicy(r, config) {
 			http.Error(w, "Access Denied", http.StatusForbidden)
+			return
 		}
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
 
 		proxy := getProxyForRequest(r, config)
+		// TODO что делать если ничего не нашлось
 		log.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
@@ -78,7 +98,7 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	cfg.CloseGeoDB()
+	geo.CloseGeoDB()
 	config.CloseLogFile()
 
 	log.Println("Server stopped")

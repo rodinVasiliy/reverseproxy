@@ -1,0 +1,11 @@
+package service
+
+// COLLECTIONS
+var RULE_COLLECTION = "Rule"
+var ACTIONS_COLLECTION = "Action"
+var POLICY_COLLECTION = "Policy"
+var WEBAPP_COLLECTION = "WebApp"
+
+// ACTION NAMES
+var LOG_TO_DB_ACTION_NAME = "Log to DB"
+var BLOCK_REQUEST_ACTION_NAME = "Block Request"

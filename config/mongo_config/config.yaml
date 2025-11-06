@@ -1,0 +1,8 @@
+mongo:
+  uri: "mongodb://localhost:27017"
+  host: "localhost"
+  port: 27017
+  database: "mydb"
+  user: "admin"
+  password: "secret"
+  isMaster: true
