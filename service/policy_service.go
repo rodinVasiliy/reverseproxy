@@ -31,6 +31,7 @@ func (ps *PolicyService) getDefaultPolicy() policy.Policy {
 	return defaultPolicy
 }
 
+// TODO можно просто любую политику загружать в БД, а не дефолт
 func (ps *PolicyService) LoadDefaultPolicyToDB() {
 	mongoConfig := ps.deps.Config
 	client := ps.deps.Client
@@ -45,6 +46,8 @@ func (ps *PolicyService) LoadDefaultPolicyToDB() {
 }
 
 //////////////////////// END INIT SECTION
+
+func 
 
 // проверяем, нужно ли блокировать реквест
 // + проходим все actions, которые вернули правила.

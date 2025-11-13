@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"os/signal"
 	cfg "reverseproxy/config"
 	config "reverseproxy/config/mongo_config"
 	"reverseproxy/geo"
+	wafconfig "reverseproxy/model/waf_config"
 	service "reverseproxy/service"
 	"syscall"
 	"time"
@@ -30,8 +30,10 @@ func main() {
 	flag.Parse()
 
 	// загружаем гео базу
+	fmt.Println("loading geo base from file ...")
 	geo.InitGeo()
 
+	fmt.Println("Getting mongo db dependencies ...")
 	// подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
@@ -40,17 +42,18 @@ func main() {
 		return
 	}
 
+	fmt.Println("Config Initialization started...")
 	actionService := service.NewActionService(mongoDeps)
 	ruleService := service.NewRuleService(mongoDeps, actionService)
 	policyService := service.NewPolicyService(mongoDeps, ruleService)
+	webAppService := service.NewWebAppService(mongoDeps)
 
-	fmt.Println("Config Initialization started...")
-	config, err := cfg.InitConfig(*port, mongoClient)
+	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {
-		fmt.Printf("failed to read config %s", err)
+		fmt.Printf("failed to load waf config %s", err)
 		return
 	}
-	fmt.Println("Config successfully loaded")
+	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
@@ -62,7 +65,11 @@ func main() {
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
 
-		proxy := getProxyForRequest(r, config)
+		webApp, err := webAppService.GetWebAppForHost(r.Host)
+		if err != nil {
+			fmt.Printf("failed to get web app for host %s, err:", r.Host, err)
+		}
+		proxy := wafConfig.GetProxyForWebApp(webApp)
 		// TODO что делать если ничего не нашлось
 		log.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
@@ -102,12 +109,6 @@ func main() {
 	config.CloseLogFile()
 
 	log.Println("Server stopped")
-}
-
-func getProxyForRequest(r *http.Request, cfg *cfg.Config) *httputil.ReverseProxy {
-	host := r.Host
-	proxy := cfg.GetReverseProxyForHost(host)
-	return proxy
 }
 
 func isBlockedByPolicy(r *http.Request, cfg *cfg.Config) bool {

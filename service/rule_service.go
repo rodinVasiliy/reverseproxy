@@ -1,12 +1,9 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	config "reverseproxy/config/mongo_config"
 	rule "reverseproxy/model/rule"
-
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -97,11 +94,11 @@ func (rs *RuleService) LoadRules() {
 func (rs *RuleService) FindAllRules() []rule.Rule {
 	mongoConfig := rs.deps.Config
 	client := rs.deps.Client
+	ctx, cancel := rs.deps.Ctx()
+	defer cancel()
 
 	db := mongoConfig.Database
 	ruleCollection := client.Database(db).Collection(RULE_COLLECTION)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	// Находим все документы
 	cursor, err := ruleCollection.Find(ctx, bson.M{}) // bson.M{} — пустой фильтр = "всё"
