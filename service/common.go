@@ -47,8 +47,22 @@ func findAll[T any](deps *config.MongoDeps, dbName, collectionName string) (*[]T
 	defer cursor.Close(ctx)
 	var documents []T
 	if err := cursor.All(ctx, &documents); err != nil {
-		fmt.Errorf("failed to decode actions %s", err)
+		return nil, fmt.Errorf("failed to decode actions %s", err)
 	}
 
 	return &documents, nil
 }
+
+func add[T any](deps *config.MongoDeps, dbName, collectionName string, entity T) (interface{}, error) {
+	ctx, cancel := deps.Ctx()
+	defer cancel()
+
+	collection := deps.Client.Database(dbName).Collection(collectionName)
+	id, err := collection.InsertOne(ctx, entity)
+	if err != nil {
+		fmt.Errorf("failed to insert %s, ", entity, err)
+	}
+	return id, nil
+}
+
+// TODO добавить add

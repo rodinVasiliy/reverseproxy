@@ -8,7 +8,7 @@ import (
 )
 
 func InItDB(mongoConfig *mconfig.MongoConfig, mongoClient *mongo.Client) {
-	config.LoadActionsToDB(*mongoConfig, mongoClient)
+	// config.LoadActionsToDB(*mongoConfig, mongoClient)
 	config.LoadRules(*mongoConfig, mongoClient)
 	// TODO добавить в загрузку базы дефолтные правила и дефолтную политику.
 }

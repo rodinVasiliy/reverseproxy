@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http/httputil"
 	"net/url"
+	webApp "reverseproxy/model/web_app"
 
-	"reverseproxy/model/webApp"
 	service "reverseproxy/service"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,7 +21,7 @@ func NewWafConfig(webAppService *service.WebAppService) (*WafConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load waf config %s", err)
 	}
-	var resultMap map[primitive.ObjectID]*httputil.ReverseProxy
+	resultMap := make(map[primitive.ObjectID]*httputil.ReverseProxy)
 	for _, webApp := range *webApps {
 		proxy, err := newProxyForUpstream(webApp.Upstream)
 		if err != nil {

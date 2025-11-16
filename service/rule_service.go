@@ -1,12 +1,8 @@
 package service
 
 import (
-	"fmt"
 	config "reverseproxy/config/mongo_config"
 	rule "reverseproxy/model/rule"
-
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type RuleService struct {
@@ -16,6 +12,10 @@ type RuleService struct {
 
 func NewRuleService(deps *config.MongoDeps, as *ActionService) *RuleService {
 	return &RuleService{deps: deps, as: as}
+}
+
+func (rs *RuleService) FindAll() (*[]rule.Rule, error) {
+	return findAll[rule.Rule](rs.deps, rs.deps.Config.Database, RULE_COLLECTION)
 }
 
 func getGeoRuleExpr() rule.Expr {
@@ -42,73 +42,56 @@ func getBlockByUARuleExpr() rule.Expr {
 	return &group
 }
 
+// TODO
+
 // выглядит пока стремненько, подумать как сложить в несколько строк, чтобы не раздувать код при появлении новых правил.
-func (rs *RuleService) LoadRules() {
-	mongoConfig := rs.deps.Config
-	client := rs.deps.Client
+// func (rs *RuleService) LoadRules() {
+// 	mongoConfig := rs.deps.Config
+// 	client := rs.deps.Client
 
-	actions, err := FindAllActions(rs.as)
-	if err != nil {
-		fmt.Printf("failed to get actions from db %s", err)
-	}
-	actionIDs := make([]primitive.ObjectID, len(actions))
-	for i, action := range actions {
-		actionIDs[i] = action.ID
-	}
+// 	actions, err := FindAllActions(rs.as)
+// 	if err != nil {
+// 		fmt.Printf("failed to get actions from db %s", err)
+// 	}
+// 	actionIDs := make([]primitive.ObjectID, len(actions))
+// 	for i, action := range actions {
+// 		actionIDs[i] = action.ID
+// 	}
 
-	blockByUARuleExpr := getBlockByUARuleExpr()
-	blockByUARuleExprDoc, err := rule.ExprToDoc(blockByUARuleExpr)
-	if err != nil {
-		fmt.Printf("failed to serialize rule %s", err)
-	}
-	getGeoRuleExpr := getGeoRuleExpr()
-	getGeoRuleExprDoc, err := rule.ExprToDoc(getGeoRuleExpr)
-	geoRule := rule.Rule{
-		Enabled: true,
-		Name:    "GeoBlock",
-		Expr:    getGeoRuleExprDoc,
-		Actions: actionIDs,
-	}
-	BlockByUARule := rule.Rule{
-		Enabled: true,
-		Name:    "BlockByUA",
-		Expr:    blockByUARuleExprDoc,
-		Actions: actionIDs,
-	}
+// 	blockByUARuleExpr := getBlockByUARuleExpr()
+// 	blockByUARuleExprDoc, err := rule.ExprToDoc(blockByUARuleExpr)
+// 	if err != nil {
+// 		fmt.Printf("failed to serialize rule %s", err)
+// 	}
+// 	getGeoRuleExpr := getGeoRuleExpr()
+// 	getGeoRuleExprDoc, err := rule.ExprToDoc(getGeoRuleExpr)
+// 	if err != nil {
+// 		fmt.Printf("failed to serialize rule %s", err)
+// 	}
+// 	geoRule := rule.Rule{
+// 		Enabled: true,
+// 		Name:    "GeoBlock",
+// 		Expr:    getGeoRuleExprDoc,
+// 		Actions: actionIDs,
+// 	}
+// 	BlockByUARule := rule.Rule{
+// 		Enabled: true,
+// 		Name:    "BlockByUA",
+// 		Expr:    blockByUARuleExprDoc,
+// 		Actions: actionIDs,
+// 	}
 
-	db := mongoConfig.Database
-	collection := client.Database(db).Collection("rule")
-	ctx, cancel := rs.deps.Ctx()
-	defer cancel()
+// 	db := mongoConfig.Database
+// 	collection := client.Database(db).Collection("rule")
+// 	ctx, cancel := rs.deps.Ctx()
+// 	defer cancel()
 
-	_, err = collection.InsertOne(ctx, geoRule)
-	if err != nil {
-		fmt.Printf("failed to insert rule to DB %s", err)
-	}
-	_, err = collection.InsertOne(ctx, BlockByUARule)
-	if err != nil {
-		fmt.Printf("failed to insert rule to DB %s", err)
-	}
-}
-
-func (rs *RuleService) FindAllRules() []rule.Rule {
-	mongoConfig := rs.deps.Config
-	client := rs.deps.Client
-	ctx, cancel := rs.deps.Ctx()
-	defer cancel()
-
-	db := mongoConfig.Database
-	ruleCollection := client.Database(db).Collection(RULE_COLLECTION)
-
-	// Находим все документы
-	cursor, err := ruleCollection.Find(ctx, bson.M{}) // bson.M{} — пустой фильтр = "всё"
-	if err != nil {
-		fmt.Errorf("failed to find rules %s", err)
-	}
-	defer cursor.Close(ctx)
-	var rules []rule.Rule
-	if err := cursor.All(ctx, &rules); err != nil {
-		fmt.Errorf("failed to decode rules %s", err)
-	}
-	return rules
-}
+// 	_, err = collection.InsertOne(ctx, geoRule)
+// 	if err != nil {
+// 		fmt.Printf("failed to insert rule to DB %s", err)
+// 	}
+// 	_, err = collection.InsertOne(ctx, BlockByUARule)
+// 	if err != nil {
+// 		fmt.Printf("failed to insert rule to DB %s", err)
+// 	}
+// }

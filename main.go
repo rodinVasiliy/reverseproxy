@@ -13,6 +13,7 @@ import (
 	"reverseproxy/geo"
 	wafconfig "reverseproxy/model/waf_config"
 	service "reverseproxy/service"
+	initialization "reverseproxy/service/initialization"
 	"syscall"
 	"time"
 
@@ -47,6 +48,9 @@ func main() {
 	ruleService := service.NewRuleService(mongoDeps, actionService)
 	policyService := service.NewPolicyService(mongoDeps, ruleService)
 	webAppService := service.NewWebAppService(mongoDeps)
+
+	fmt.Println("Initialization database ...")
+	initialization.InItDB(policyService)
 
 	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {

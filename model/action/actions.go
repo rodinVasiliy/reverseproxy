@@ -48,12 +48,9 @@ func ActionsByName(names ...string) []*Action {
 	return result
 }
 
-// TODO подумать нужно ли это теперь
-// Инициализация
-
 var (
-	logToDBActionName      = "Log to DB"
-	blockRequestActionName = "BlockRequst"
+	LOG_TO_DB_ACTION_NAME     = "Log to DB"
+	BLOCK_REQUEST_ACTION_NAME = "BlockRequst"
 
 	logToDBAction = &Action{
 		Name:       "Log to DB",
@@ -67,7 +64,7 @@ var (
 	}
 
 	namesAndActionsMap = map[string]*Action{
-		logToDBActionName:      logToDBAction,
-		blockRequestActionName: blockRequestAction,
+		LOG_TO_DB_ACTION_NAME:     logToDBAction,
+		BLOCK_REQUEST_ACTION_NAME: blockRequestAction,
 	}
 )
