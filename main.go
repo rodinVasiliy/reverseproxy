@@ -8,7 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	cfg "reverseproxy/config"
+	check_request "reverseproxy/check_request"
+	log_config "reverseproxy/config/log"
 	config "reverseproxy/config/mongo_config"
 	"reverseproxy/geo"
 	wafconfig "reverseproxy/model/waf_config"
@@ -30,16 +31,27 @@ func main() {
 	port := flag.Int("port", 9001, "Port for proxy serv")
 	flag.Parse()
 
+	logConfig, err := log_config.NewLogConfig(*port)
+	if err != nil {
+		fmt.Printf("failed to open log file %s", err)
+		return
+	}
+
 	// загружаем гео базу
 	fmt.Println("loading geo base from file ...")
-	geo.InitGeo()
+	err = geo.InitGeo()
+	if err != nil {
+		fmt.Printf("failed to in it geo base %s", err)
+		closeAll(logConfig)
+		return
+	}
 
 	fmt.Println("Getting mongo db dependencies ...")
 	// подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s", err)
-		// по-хорошему тут закрыть всё то, что выше открыл(гео базу например закрыть, чтобы не было утечек)
+		closeAll(logConfig)
 		return
 	}
 
@@ -50,11 +62,12 @@ func main() {
 	webAppService := service.NewWebAppService(mongoDeps)
 
 	fmt.Println("Initialization database ...")
-	initialization.InItDB(policyService)
+	initialization.InItDB(policyService, actionService, ruleService)
 
 	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
+		closeAll(logConfig)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -62,7 +75,7 @@ func main() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
 
-		if isBlockedByPolicy(r, config) {
+		if check_request.IsBlock(r, webAppService, policyService, ruleService, actionService) {
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
@@ -71,7 +84,7 @@ func main() {
 
 		webApp, err := webAppService.GetWebAppForHost(r.Host)
 		if err != nil {
-			fmt.Printf("failed to get web app for host %s, err:", r.Host, err)
+			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
 		// TODO что делать если ничего не нашлось
@@ -109,14 +122,13 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	geo.CloseGeoDB()
-	config.CloseLogFile()
+	closeAll(logConfig)
 
 	log.Println("Server stopped")
 }
 
-func isBlockedByPolicy(r *http.Request, cfg *cfg.Config) bool {
-	host := r.Host
-	policy := cfg.GetPolicyForHost(host)
-	return policy.IsBlockedByPolicy(r)
+// закрываем нужные ресурсы - файл для лога и гео базу
+func closeAll(logConfig *log_config.LogConfig) {
+	logConfig.CloseLogFile()
+	geo.CloseGeoDB()
 }

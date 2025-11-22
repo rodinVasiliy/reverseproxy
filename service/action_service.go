@@ -3,6 +3,8 @@ package service
 import (
 	config "reverseproxy/config/mongo_config"
 	action "reverseproxy/model/action"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ActionService struct {
@@ -19,4 +21,8 @@ func (as *ActionService) FindAllActions() (*[]action.ActionDoc, error) {
 
 func (as *ActionService) Add(actionDoc *action.ActionDoc) (interface{}, error) {
 	return add(as.deps, as.deps.Config.Database, ACTIONS_COLLECTION, actionDoc)
+}
+
+func (as *ActionService) FindById(id primitive.ObjectID) (*action.Action, error) {
+	return findById[action.Action](as.deps, as.deps.Config.Database, ACTIONS_COLLECTION, id)
 }

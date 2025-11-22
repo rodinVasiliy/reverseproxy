@@ -10,20 +10,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func findById[T any](deps *config.MongoDeps, dbName, collectionName, id string) (*T, error) {
-	// Преобразуем строку в ObjectID
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ID format: %w", err)
-	}
-
+func findById[T any](deps *config.MongoDeps, dbName string, collectionName string, id primitive.ObjectID) (*T, error) {
 	ctx, cancel := deps.Ctx()
 	defer cancel()
 
 	collection := deps.Client.Database(dbName).Collection(collectionName)
 
 	var result T
-	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&result)
+	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, fmt.Errorf("document with ID %s not found", id)
@@ -60,7 +54,7 @@ func add[T any](deps *config.MongoDeps, dbName, collectionName string, entity T)
 	collection := deps.Client.Database(dbName).Collection(collectionName)
 	id, err := collection.InsertOne(ctx, entity)
 	if err != nil {
-		fmt.Errorf("failed to insert %s, ", entity, err)
+		return nil, fmt.Errorf("failed to insert entity %w, ", err)
 	}
 	return id, nil
 }

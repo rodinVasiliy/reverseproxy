@@ -20,16 +20,16 @@ type Action struct {
 }
 
 type ActionParams struct {
-	rule string
-	rp   *parsedRequest.ParsedRequest
+	Rule string
+	PR   *parsedRequest.ParsedRequest
 }
 
 // Сами Actions
 
 func LogToDB() func(*ActionParams) {
 	return func(ap *ActionParams) {
-		ip := ap.rp.IP
-		rule := ap.rule
+		ip := ap.PR.IP
+		rule := ap.Rule
 		log.Printf("ip: %s rule: %s", ip, rule)
 	}
 }
@@ -46,6 +46,10 @@ func ActionsByName(names ...string) []*Action {
 		result = append(result, namesAndActionsMap[name])
 	}
 	return result
+}
+
+func ActionByName(name string) *Action {
+	return namesAndActionsMap[name]
 }
 
 var (

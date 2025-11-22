@@ -8,26 +8,25 @@ import (
 	service "reverseproxy/service"
 )
 
-// func GetDefaultActions() *[]action.ActionDoc {
-
-// }
-
-func LoadActionsToDB(as *service.ActionService) error {
-
+func GetDefaultActions() *[]action.ActionDoc {
+	var actionDocs []action.ActionDoc
 	logToDBActionDoc := action.ActionDoc{
 		Name: LOG_TO_DB_ACTION_NAME,
 	}
 	blockRequestActionDoc := action.ActionDoc{
 		Name: BLOCK_REQUEST_ACTION_NAME,
 	}
+	actionDocs = append(actionDocs, logToDBActionDoc)
+	actionDocs = append(actionDocs, blockRequestActionDoc)
+	return &actionDocs
+}
 
-	_, err := as.Add(&logToDBActionDoc)
-	if err != nil {
-		return fmt.Errorf("failed to add action doc to db %w", err)
-	}
-	_, err = as.Add(&blockRequestActionDoc)
-	if err != nil {
-		return fmt.Errorf("failed to add action doc to db %w", err)
+func LoadActionsToDB(as *service.ActionService, actions *[]action.ActionDoc) error {
+	for _, action := range *actions {
+		_, err := as.Add(&action)
+		if err != nil {
+			return fmt.Errorf("failed to add action %s to db %w", action.Name, err)
+		}
 	}
 	return nil
 }
@@ -35,20 +34,4 @@ func LoadActionsToDB(as *service.ActionService) error {
 var (
 	LOG_TO_DB_ACTION_NAME     = "Log to DB"
 	BLOCK_REQUEST_ACTION_NAME = "BlockRequst"
-
-	// logToDBAction = &Action{
-	// 	Name:       "Log to DB",
-	// 	Do:         LogToDB(),
-	// 	ActionType: ActionLog,
-	// }
-	// blockRequestAction = &Action{
-	// 	Name:       "Block request",
-	// 	Do:         BlockRequest(),
-	// 	ActionType: ActionBlock,
-	// }
-
-	// namesAndActionsMap = map[string]*Action{
-	// 	logToDBActionName:      logToDBAction,
-	// 	blockRequestActionName: blockRequestAction,
-	// }
 )

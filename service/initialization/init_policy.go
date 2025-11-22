@@ -6,10 +6,10 @@ import (
 	service "reverseproxy/service"
 )
 
-func GetDefaultPolicy(ps *service.PolicyService) (*policy.Policy, error) {
-	rules, err := ps.RuleService().FindAll()
+func GetDefaultPolicy(ps *service.PolicyService, rs *service.RuleService) (*policy.Policy, error) {
+	rules, err := rs.FindAll()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find all rules %s", err)
+		return nil, fmt.Errorf("failed to find all rules %w", err)
 	}
 	// добавляем к правилам дефолтные actions
 	var policyRuleRef []policy.PolicyRuleRef

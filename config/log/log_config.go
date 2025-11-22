@@ -7,7 +7,12 @@ import (
 	"path/filepath"
 )
 
-func initLogFile(port int) (*os.File, error) {
+type LogConfig struct {
+	file *os.File
+}
+
+// создает файл для лога, который потом нужно будет закрыть, в пути к файлу используется порт, который использует прокси
+func NewLogConfig(port int) (*LogConfig, error) {
 	logFileName := filepath.Join("log", fmt.Sprintf("db_%d.log", port))
 	var err error
 	var logFile *os.File
@@ -19,13 +24,13 @@ func initLogFile(port int) (*os.File, error) {
 
 	// Настраиваем логгер на запись в файл
 	log.SetOutput(logFile)
-	return logFile, err
+	return &LogConfig{file: logFile}, err
 }
 
 // TODO подумать, почему я вызываю это в main и делаю метод открытым...
-func (cfg *Config) CloseLogFile() {
-	if cfg.logFile != nil {
-		cfg.logFile.Close()
+func (logConfig *LogConfig) CloseLogFile() {
+	if logConfig.file != nil {
+		logConfig.file.Close()
 		fmt.Println("log file closed")
 	}
 }
