@@ -3,12 +3,14 @@ package config
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type MongoDeps struct {
@@ -28,28 +30,48 @@ func (m *MongoDeps) Ctx() (context.Context, context.CancelFunc) {
 func NewMongoDeps() (*MongoDeps, error) {
 	mongoConfigFilePath := filepath.Join("config", "mongo_config", "config.yaml")
 	mongoConfig, err := LoadConfig(mongoConfigFilePath)
+
+	mongoConfig.Role = getRoleFromEnv()
+
 	if err != nil {
-		fmt.Errorf("failed to load mongo config %s", err)
+		return nil, fmt.Errorf("failed to load mongo config %w", err)
 	}
 
 	timeout := 5 * time.Second
 
-	mongoClient, err := getMongoClient(timeout, mongoConfig.URI)
+	mongoClient, err := getMongoClient(timeout, mongoConfig)
 	if err != nil {
-		fmt.Errorf("failed to connect to mongo %s", err)
+		return nil, fmt.Errorf("failed to connect to mongo %w", err)
 	}
 
 	return &MongoDeps{Config: *mongoConfig, Timeout: timeout, Client: mongoClient}, nil
 }
 
-func getMongoClient(timeout time.Duration, uri string) (*mongo.Client, error) {
+func getMongoClient(timeout time.Duration, mongoConfig *MongoConfig) (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	clientOpts := options.Client().ApplyURI(mongoConfig.URI)
+
+	switch mongoConfig.Role {
+	case "master":
+		clientOpts.SetReadPreference(readpref.Primary())
+	case "replica":
+		clientOpts.SetReadPreference(readpref.SecondaryPreferred())
+	}
+
+	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed connect to mongo %w", err)
 	}
 
 	return client, nil
+}
+
+func getRoleFromEnv() string {
+	role := os.Getenv("MONGO_ROLE")
+	if role == "" {
+		role = "master"
+	}
+	return role
 }

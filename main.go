@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,11 +14,28 @@ import (
 	wafconfig "reverseproxy/model/waf_config"
 	service "reverseproxy/service"
 	initialization "reverseproxy/service/initialization"
+	"strconv"
 	"syscall"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+func getPort() (int, error) {
+	portStr := os.Getenv("PROXY_PORT")
+	if portStr == "" {
+		return -1, fmt.Errorf("please executing program don't forget enter proxy port")
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse proxy port %s %w", portStr, err)
+	}
+	return port, nil
+}
+
+func getInItFlag() bool {
+	return os.Getenv("INIT") == "1"
+}
 
 // TO DO протестировать
 func main() {
@@ -27,11 +43,14 @@ func main() {
 	fmt.Println("reverse proxy ...")
 
 	// порт который использует прокси сервер, мы будем передавать его в заголовок, просто для инфо
-	// TODO - сделать корректный парсинг, чтобы выдавало ошибку, если не получится считать число
-	port := flag.Int("port", 9001, "Port for proxy serv")
-	flag.Parse()
+	port, err := getPort()
+	if err != nil {
+		fmt.Printf("failed to get proxy port %s", err)
+		return
+	}
 
-	logConfig, err := log_config.NewLogConfig(*port)
+	// тут идет настройка лог файла, в котором будут отображаться ошибки
+	logConfig, err := log_config.NewLogConfig(port)
 	if err != nil {
 		fmt.Printf("failed to open log file %s", err)
 		return
@@ -61,9 +80,14 @@ func main() {
 	policyService := service.NewPolicyService(mongoDeps, ruleService)
 	webAppService := service.NewWebAppService(mongoDeps)
 
-	fmt.Println("Initialization database ...")
-	initialization.InItDB(policyService, actionService, ruleService)
+	if getInItFlag() {
+		fmt.Println("Initialization database ...")
+		initialization.InItDB(policyService, actionService, ruleService)
+	} else {
+		fmt.Println("Init db not required")
+	}
 
+	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
 	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
@@ -73,14 +97,15 @@ func main() {
 	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, *port)
+		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, port)
 
+		// проверяем, нужно ли блокировать запрос
 		if check_request.IsBlock(r, webAppService, policyService, ruleService, actionService) {
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
 
-		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", *port))
+		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
 
 		webApp, err := webAppService.GetWebAppForHost(r.Host)
 		if err != nil {
@@ -93,7 +118,7 @@ func main() {
 	})
 
 	// слушаем только с nginx
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
 	server := &http.Server{
 		Addr:    addr,

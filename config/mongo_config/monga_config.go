@@ -8,12 +8,8 @@ import (
 
 type MongoConfig struct {
 	URI      string `yaml:"uri" json:"uri"`
-	Host     string `yaml:"host" json:"host"`
-	Port     int    `yaml:"port" json:"port"`
 	Database string `yaml:"database" json:"database"`
-	User     string `yaml:"user" json:"user"`
-	Password string `yaml:"password" json:"password"`
-	IsMaster bool   `yaml:"isMaster" json:"isMaster"`
+	Role     string
 }
 
 func LoadConfig(path string) (*MongoConfig, error) {
