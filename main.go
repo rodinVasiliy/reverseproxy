@@ -82,7 +82,12 @@ func main() {
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
-		initialization.InItDB(policyService, actionService, ruleService)
+		err = initialization.InItDB(policyService, actionService, ruleService)
+		if err != nil {
+			fmt.Printf("failed to in it db %s", err)
+			closeAll(logConfig)
+			return
+		}
 	} else {
 		fmt.Println("Init db not required")
 	}
