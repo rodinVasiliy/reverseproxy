@@ -20,7 +20,7 @@ func CloseGeoDB() {
 func InitGeo() error {
 	var err error
 	// TODO в константу
-	geoDB, err = geoip2.Open("config/dbip-country-lite-2025-09.mmdb")
+	geoDB, err = geoip2.Open("geo/geo_config/dbip-country-lite-2025-09.mmdb")
 	if err != nil {
 		return err
 	} else {
