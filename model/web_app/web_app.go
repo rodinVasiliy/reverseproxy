@@ -6,6 +6,7 @@ import (
 
 type WebApp struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	Name     string             `bson:"name"`
 	PolicyId primitive.ObjectID `bson:"policyId"`
 	SSLId    primitive.ObjectID `bson:"SSLId"`
 	Upstream string             `bson:"upstream"`

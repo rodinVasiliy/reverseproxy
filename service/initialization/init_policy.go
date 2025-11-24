@@ -17,6 +17,6 @@ func GetDefaultPolicy(ps *service.PolicyService, rs *service.RuleService) (*poli
 		policyRuleRef = append(policyRuleRef, policy.PolicyRuleRef{RuleID: rule.ID})
 	}
 	// wl пока будет пустым
-	defaultPolicy := policy.Policy{WL: nil, Rules: policyRuleRef}
+	defaultPolicy := policy.Policy{WL: nil, Rules: policyRuleRef, Name: service.DEFAULT_POLICY_NAME}
 	return &defaultPolicy, nil
 }

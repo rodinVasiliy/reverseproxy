@@ -78,6 +78,7 @@ func main() {
 	actionService := service.NewActionService(mongoDeps)
 	ruleService := service.NewRuleService(mongoDeps, actionService)
 	policyService := service.NewPolicyService(mongoDeps, ruleService)
+	sslService := service.NewSSLConfigurationService(mongoDeps)
 	webAppService := service.NewWebAppService(mongoDeps)
 
 	if getInItFlag() {
@@ -85,6 +86,12 @@ func main() {
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
+			closeAll(logConfig)
+			return
+		}
+		err = initialization.NewTestWebApp(policyService, sslService, webAppService)
+		if err != nil {
+			fmt.Printf("failed to add test webapp %s", err)
 			closeAll(logConfig)
 			return
 		}

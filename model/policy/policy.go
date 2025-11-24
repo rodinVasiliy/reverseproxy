@@ -6,6 +6,7 @@ import (
 
 type Policy struct {
 	ID    primitive.ObjectID `bson:"_id,omitempty"`
+	Name  string             `bson:"name"`
 	WL    []string           `bson:"wl"` // список префиксов(подсетей), которые в белом списке
 	Rules []PolicyRuleRef    `bson:"rules"`
 }

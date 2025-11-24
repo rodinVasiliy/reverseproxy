@@ -1,11 +1,15 @@
 package service
 
 // COLLECTIONS
-var RULE_COLLECTION = "Rule"
-var ACTIONS_COLLECTION = "Action"
-var POLICY_COLLECTION = "Policy"
-var WEBAPP_COLLECTION = "WebApp"
+var RULE_COLLECTION = "rule"
+var ACTIONS_COLLECTION = "action"
+var POLICY_COLLECTION = "policy"
+var WEBAPP_COLLECTION = "webApp"
+var SSL_COLLECTION = "ssl"
 
 // ACTION NAMES
 var LOG_TO_DB_ACTION_NAME = "Log to DB"
 var BLOCK_REQUEST_ACTION_NAME = "Block Request"
+
+// DEFAULT POLICY NAME
+var DEFAULT_POLICY_NAME = "Default"

@@ -6,6 +6,7 @@ import (
 	webapp "reverseproxy/model/web_app"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type WebAppService struct {
@@ -18,6 +19,10 @@ func NewWebAppService(deps *config.MongoDeps) *WebAppService {
 
 func (wA *WebAppService) FindAllWebApps() (*[]webapp.WebApp, error) {
 	return findAll[webapp.WebApp](wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION)
+}
+
+func (wA *WebAppService) Add(webApp *webapp.WebApp) (primitive.ObjectID, error) {
+	return add(wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, webApp)
 }
 
 func (wA *WebAppService) GetWebAppForHost(host string) (*webapp.WebApp, error) {

@@ -28,6 +28,23 @@ func findById[T any](deps *config.MongoDeps, dbName string, collectionName strin
 	return &result, nil
 }
 
+func findByName[T any](deps *config.MongoDeps, dbName, collectionName, entityName string) (*T, error) {
+	ctx, cancel := deps.Ctx()
+	defer cancel()
+
+	collection := deps.Client.Database(dbName).Collection(collectionName)
+	var result T
+	err := collection.FindOne(ctx, bson.M{"name": entityName}).Decode(&result)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, fmt.Errorf("document with name %s not found", entityName)
+		}
+		return nil, fmt.Errorf("failed to find document by name %s: %w", entityName, err)
+	}
+
+	return &result, nil
+}
+
 func findAll[T any](deps *config.MongoDeps, dbName, collectionName string) (*[]T, error) {
 	ctx, cancel := deps.Ctx()
 	defer cancel()
@@ -47,16 +64,19 @@ func findAll[T any](deps *config.MongoDeps, dbName, collectionName string) (*[]T
 	return &documents, nil
 }
 
-func add[T any](deps *config.MongoDeps, dbName, collectionName string, entity T) (interface{}, error) {
+func add[T any](deps *config.MongoDeps, dbName, collectionName string, entity T) (primitive.ObjectID, error) {
 	ctx, cancel := deps.Ctx()
 	defer cancel()
 
 	collection := deps.Client.Database(dbName).Collection(collectionName)
-	id, err := collection.InsertOne(ctx, entity)
+	res, err := collection.InsertOne(ctx, entity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to insert entity %w, ", err)
+		return primitive.NilObjectID, fmt.Errorf("failed to insert entity %w, ", err)
 	}
-	return id, nil
-}
+	oid, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return primitive.NilObjectID, fmt.Errorf("inserted ID is not ObjectID (got %T)", res.InsertedID)
+	}
 
-// TODO добавить add
+	return oid, nil
+}

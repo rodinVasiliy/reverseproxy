@@ -15,10 +15,14 @@ func NewPolicyService(deps *config.MongoDeps, ruleService *RuleService) *PolicyS
 	return &PolicyService{deps: deps}
 }
 
-func (ps *PolicyService) Add(policy *policy.Policy) (interface{}, error) {
+func (ps *PolicyService) Add(policy *policy.Policy) (primitive.ObjectID, error) {
 	return add(ps.deps, ps.deps.Config.Database, POLICY_COLLECTION, policy)
 }
 
 func (ps *PolicyService) FindById(id primitive.ObjectID) (*policy.Policy, error) {
 	return findById[policy.Policy](ps.deps, ps.deps.Config.Database, POLICY_COLLECTION, id)
+}
+
+func (ps *PolicyService) FindByName(name string) (*policy.Policy, error) {
+	return findByName[policy.Policy](ps.deps, ps.deps.Config.Database, POLICY_COLLECTION, name)
 }

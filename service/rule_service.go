@@ -20,7 +20,7 @@ func (rs *RuleService) FindAll() (*[]rule.Rule, error) {
 	return findAll[rule.Rule](rs.deps, rs.deps.Config.Database, RULE_COLLECTION)
 }
 
-func (rs *RuleService) Add(rule *rule.Rule) (interface{}, error) {
+func (rs *RuleService) Add(rule *rule.Rule) (primitive.ObjectID, error) {
 	return add(rs.deps, rs.deps.Config.Database, RULE_COLLECTION, rule)
 }
 
