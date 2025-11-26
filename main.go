@@ -124,8 +124,11 @@ func main() {
 			return
 		}
 		if isBlock {
+			fmt.Println("access will be denied")
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
+		} else {
+			fmt.Println("access wil not be denied")
 		}
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
