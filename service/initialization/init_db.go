@@ -30,6 +30,6 @@ func InItDB(ps *service.PolicyService, as *service.ActionService, rs *service.Ru
 	if err != nil {
 		return fmt.Errorf("failed to add policy to db %w", err)
 	}
-	fmt.Printf("in it db successfull")
+	fmt.Println("in it db successfull")
 	return nil
 }

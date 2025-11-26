@@ -109,6 +109,7 @@ func main() {
 	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, port)
 		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, port)
 
 		// проверяем, нужно ли блокировать запрос
@@ -125,7 +126,7 @@ func main() {
 			return
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
-		// TODO что делать если ничего не нашлось
+		fmt.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
 		log.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
