@@ -122,6 +122,7 @@ func main() {
 		webApp, err := webAppService.GetWebAppForHost(r.Host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
+			return
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
 		// TODO что делать если ничего не нашлось
