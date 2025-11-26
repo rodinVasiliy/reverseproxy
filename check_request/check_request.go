@@ -55,7 +55,7 @@ func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyServi
 	if err != nil {
 		return false, fmt.Errorf("failed to find web app for host %s %s", host, err)
 	}
-	policy, err := ps.FindById(webapp.ID)
+	policy, err := ps.FindById(webapp.PolicyId)
 	if err != nil {
 		return false, fmt.Errorf("failed to find policy %s", err)
 	}
