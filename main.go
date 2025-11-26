@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -109,18 +110,27 @@ func main() {
 	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, port)
-		log.Printf("Proxy request %s %s via port %d", r.Method, r.URL.Path, port)
+		fmt.Printf("Proxy request %s %s %s via port %d", r.Host, r.Method, r.URL.Path, port)
+		log.Printf("Proxy request %s %s %s via port %d", r.Host, r.Method, r.URL.Path, port)
+		host := r.Host
+		if h, _, err := net.SplitHostPort(r.Host); err == nil {
+			host = h
+		}
 
 		// проверяем, нужно ли блокировать запрос
-		if check_request.IsBlock(r, webAppService, policyService, ruleService, actionService) {
+		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService)
+		if err != nil {
+			fmt.Printf("failed to check request %s", err)
+			return
+		}
+		if isBlock {
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
 
-		webApp, err := webAppService.GetWebAppForHost(r.Host)
+		webApp, err := webAppService.GetWebAppForHost(host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
 			return

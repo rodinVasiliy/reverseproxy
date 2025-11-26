@@ -46,27 +46,29 @@ func checkActions(actionIds []primitive.ObjectID, as *service.ActionService, pr 
 
 // проверка, нужно ли блокировать запрос, проходимся по всем правилам из политики
 func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyService,
-	rs *service.RuleService, as *service.ActionService) bool {
-	host := r.URL.Host
+	rs *service.RuleService, as *service.ActionService) (bool, error) {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
 	webapp, err := ws.GetWebAppForHost(host)
 	if err != nil {
-		fmt.Printf("failed to find web app for host %s %s", host, err)
-		return false
+		return false, fmt.Errorf("failed to find web app for host %s %s", host, err)
 	}
 	policy, err := ps.FindById(webapp.ID)
 	if err != nil {
-		fmt.Printf("failed to find policy %s", err)
+		return false, fmt.Errorf("failed to find policy %s", err)
 	}
 	parsedRequest := parsed_request.ParseRequest(r)
 	if checkInList(parsedRequest.IP, policy.WL) {
-		return false
+		return false, nil
 	}
 	isBlock := false
 	uniqueActions := map[string]struct{}{}
 	for _, ruleRef := range policy.Rules {
 		rule, err := rs.FindById(ruleRef.RuleID)
 		if err != nil {
-			fmt.Printf("failed to find rule %s by id %s", rule.Name, err)
+			return false, fmt.Errorf("failed to find rule %s by id %s", rule.Name, err)
 		}
 		if rule.Match(parsedRequest.ToMap()) {
 			// точно ли nil?
@@ -85,5 +87,5 @@ func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyServi
 		actionParams := act.ActionParams{Rule: "", PR: parsedRequest}
 		action.Do(&actionParams)
 	}
-	return isBlock
+	return isBlock, nil
 }
