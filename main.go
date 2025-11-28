@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -113,9 +112,11 @@ func main() {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		log.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		host := r.Host
-		if h, _, err := net.SplitHostPort(r.Host); err == nil {
-			host = h
-		}
+		// if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		// 	host = h
+		// } else {
+		// 	fmt.Printf("failed to split host | port %s", err)
+		// }
 
 		// проверяем, нужно ли блокировать запрос
 		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService)
