@@ -110,8 +110,8 @@ func main() {
 	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Proxy request %s %s %s via port %d", r.Host, r.Method, r.URL.Path, port)
-		log.Printf("Proxy request %s %s %s via port %d", r.Host, r.Method, r.URL.Path, port)
+		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
+		log.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		host := r.Host
 		if h, _, err := net.SplitHostPort(r.Host); err == nil {
 			host = h

@@ -26,7 +26,7 @@ func checkInList(ip net.IP, list []string) bool {
 // логирует запрос если есть лог - для этого и нужно ruleName в параметрах
 // добавляет список уникальных actions чтобы потом их выполнил другой метод
 func checkActions(actionIds []primitive.ObjectID, as *service.ActionService, pr *parsed_request.ParsedRequest, ruleName string,
-	uniqueActions map[string]struct{}) (bool, map[string]struct{}) {
+	uniqueActions map[string]struct{}) bool {
 	isBlock := false
 	for i := range actionIds {
 		actionDoc, _ := as.FindById(actionIds[i])
@@ -41,7 +41,7 @@ func checkActions(actionIds []primitive.ObjectID, as *service.ActionService, pr 
 			uniqueActions[ruleName] = struct{}{}
 		}
 	}
-	return isBlock, uniqueActions
+	return isBlock
 }
 
 // проверка, нужно ли блокировать запрос, проходимся по всем правилам из политики
@@ -65,6 +65,7 @@ func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyServi
 	}
 	isBlock := false
 	uniqueActions := map[string]struct{}{}
+	// TODO - переделать логику
 	for _, ruleRef := range policy.Rules {
 		rule, err := rs.FindById(ruleRef.RuleID)
 		if err != nil {
@@ -75,10 +76,15 @@ func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyServi
 			if ruleRef.Actions == nil {
 				// это если у правила используются default actions(нет переопределения для actions)
 				actions := rule.Actions
-				checkActions(actions, as, parsedRequest, rule.Name, uniqueActions)
+				// переименовать функцию
+				if ok := checkActions(actions, as, parsedRequest, rule.Name, uniqueActions); ok {
+					isBlock = true
+				}
 			} else {
 				// это если у правила переопределен список actions
-				checkActions(ruleRef.Actions, as, parsedRequest, rule.Name, uniqueActions)
+				if ok := checkActions(ruleRef.Actions, as, parsedRequest, rule.Name, uniqueActions); ok {
+					isBlock = true
+				}
 			}
 		}
 	}
