@@ -5,15 +5,16 @@ import (
 )
 
 type ExprDoc struct {
-	NodeType string    `bson:"nodeType"` // "condition" | "group"
-	IsNot    bool      `bson:"isNot"`
-	Operator string    `bson:"operator,omitempty"` // если группа
+	NodeType string    `bson:"nodeType"`           // "condition" | "group"
+	IsNot    bool      `bson:"isNot"`              // если выставлено - значит при true вернет false и наоборот
+	Operator string    `bson:"operator,omitempty"` //
 	Children []ExprDoc `bson:"children,omitempty"` // если группа
 	Match    string    `bson:"match,omitempty"`    // equals/in/regex
-	Field    string    `bson:"field,omitempty"`    // например "ua"
+	Field    string    `bson:"field,omitempty"`    // поле которое будет проверяться, например "ua"
 	Raw      string    `bson:"value"`              // значений на которое будет матчится параметр запроса
 }
 
+// преобразовываем expression в expressionDoc, чтобы хранить его в базе
 func BuildExpr(doc ExprDoc) Expr {
 	switch doc.NodeType {
 	case "condition":

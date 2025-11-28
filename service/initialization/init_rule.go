@@ -9,18 +9,15 @@ import (
 )
 
 func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
-	// expressions
-	geoRuleExp := getGeoRuleExpr()
-	blockByUARuleExp := getBlockByUARuleExpr()
 
 	// expression docs
-	geoRuleDoc, err := rule.ExprToDoc(geoRuleExp)
+	geoRuleDoc, err := getGeoRuleExprDoc()
 	if err != nil {
-		fmt.Printf("failed to convert Exp %s to ExpDoc %s", "geo", err)
+		return nil, fmt.Errorf("failed to get geo expr %w", err)
 	}
-	blockByUADoc, err := rule.ExprToDoc(blockByUARuleExp)
+	blockByUADoc, err := getBlockByUARuleExprDoc()
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert Exp %s to ExpDoc %w", "blockByUADoc", err)
+		return nil, fmt.Errorf("failed to get block by ua expr %w", err)
 	}
 	actions, err := as.FindAllActions()
 	if err != nil {
@@ -33,13 +30,13 @@ func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
 	blockByGeoRule := rule.Rule{
 		Enabled: true,
 		Name:    "Block by Geo",
-		Expr:    geoRuleDoc,
+		Expr:    *geoRuleDoc,
 		Actions: actionsIds,
 	}
 	blockByUARule := rule.Rule{
 		Enabled: true,
 		Name:    "Block by Geo",
-		Expr:    blockByUADoc,
+		Expr:    *blockByUADoc,
 		Actions: actionsIds,
 	}
 	var rules []rule.Rule
@@ -47,26 +44,29 @@ func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
 	return &rules, nil
 }
 
-func getGeoRuleExpr() rule.Expr {
+func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		MatchType:            rule.MatchNotEquals,
 		RequestParameterType: "countryCode",
 		Raw:                  "RU",
 	}
-	return &cond
+	exprDoc, err := rule.ExprToDoc(&cond)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Geo Rule ExprDoc %w", err)
+	}
+	return &exprDoc, nil
 }
 
-func getBlockByUARuleExpr() rule.Expr {
+func getBlockByUARuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
+		IsNot:                true,
 		MatchType:            rule.MatchRegex,
 		RequestParameterType: "ua",
 		Raw:                  "^Mozilla\\/5.0.+",
 	}
-	var expr []rule.Expr
-	expr = append(expr, &cond)
-	group := rule.Group{
-		Operator: rule.OpenandNot,
-		Children: expr,
+	exprDoc, err := rule.ExprToDoc(&cond)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Block By UA Rule ExprDoc %w", err)
 	}
-	return &group
+	return &exprDoc, nil
 }
