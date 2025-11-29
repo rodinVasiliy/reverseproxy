@@ -38,13 +38,13 @@ func ParseRequest(r *http.Request) *ParsedRequest {
 
 func (rp *ParsedRequest) ToMap() map[string]string {
 	result := map[string]string{
-		"ip":          rp.IP.String(),
-		"host":        rp.Host,
-		"path":        rp.Path,
-		"uri":         rp.Uri,
-		"method":      rp.Method,
-		"ua":          rp.UA,
-		"countryCode": rp.CountryCode,
+		IP:           rp.IP.String(),
+		HOST:         rp.Host,
+		PATH:         rp.Path,
+		URI:          rp.Uri,
+		rp.Method:    rp.Method,
+		UA:           rp.UA,
+		COUNTRY_CODE: rp.CountryCode,
 	}
 	for _, cookie := range rp.Cookies {
 		name := "cookie:" + cookie.Name
@@ -63,3 +63,11 @@ func getIpFromRequest(r *http.Request) net.IP {
 	xrip := r.Header.Get("X-Real-IP")
 	return net.ParseIP(xrip)
 }
+
+var IP = "ip"
+var HOST = "host"
+var PATH = "path"
+var URI = "uri"
+var METHOD = "method"
+var UA = "ua"
+var COUNTRY_CODE = "countryCode"

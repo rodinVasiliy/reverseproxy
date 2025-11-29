@@ -57,8 +57,8 @@ type Condition struct { // реализовывыает Expr
 	MatchType            MatchType
 	RequestParameterType string         // ip или UA, или host и т.д.
 	Raw                  string         // исходное значение из конфигурации
-	inVals               []string       // для MatchIn
-	regex                *regexp.Regexp // для MatchRegex
+	inVals               []string       // для MatchIn, не будет сериализоваться, нужна инициализация, чтобы поле появилось
+	regex                *regexp.Regexp // для MatchRegex, не будет сериализоваться, нужна инициализация, чтобы поле появилось
 }
 
 func (c *Condition) Init() error {
@@ -77,6 +77,7 @@ func (c *Condition) Init() error {
 
 // Проверка
 func (c *Condition) Match(requstMap map[string]string) bool {
+	c.Init()
 	value := requstMap[c.RequestParameterType]
 	switch c.MatchType {
 	case MatchEquals:

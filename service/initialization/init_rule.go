@@ -46,6 +46,7 @@ func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
 
 func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
+		IsNot:                false,
 		MatchType:            rule.MatchNotEquals,
 		RequestParameterType: "countryCode",
 		Raw:                  "RU",
