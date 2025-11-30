@@ -17,3 +17,7 @@ func (rule *Rule) Match(requestMap map[string]string) bool {
 	Expr := BuildExpr(rule.Expr)
 	return Expr.Match(requestMap)
 }
+
+func (rule *Rule) GetID() primitive.ObjectID {
+	return rule.ID
+}

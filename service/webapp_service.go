@@ -10,11 +10,12 @@ import (
 )
 
 type WebAppService struct {
-	deps *config.MongoDeps
+	deps       *config.MongoDeps
+	sslService *SSLConfigurationService
 }
 
-func NewWebAppService(deps *config.MongoDeps) *WebAppService {
-	return &WebAppService{deps: deps}
+func NewWebAppService(deps *config.MongoDeps, sslService *SSLConfigurationService) *WebAppService {
+	return &WebAppService{deps: deps, sslService: sslService}
 }
 
 func (wA *WebAppService) FindAllWebApps() (*[]webapp.WebApp, error) {
@@ -22,7 +23,28 @@ func (wA *WebAppService) FindAllWebApps() (*[]webapp.WebApp, error) {
 }
 
 func (wA *WebAppService) Add(webApp *webapp.WebApp) (primitive.ObjectID, error) {
+	ssl, err := wA.sslService.FindById(webApp.SSLId)
+	if err != nil {
+		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
+	}
+	nginxConfig := GenerateNginxConfig(*webApp, ssl.CertPath, ssl.KeyPath)
+	createNginxFiles(*webApp, nginxConfig)
 	return add(wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, webApp)
+}
+
+func (wA *WebAppService) Delete(app *webapp.WebApp) error {
+	deleteNginxFiles(*app)
+	return delete[webapp.WebApp](wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, app.ID)
+}
+
+func (wA *WebAppService) Edit(app *webapp.WebApp) error {
+	ssl, err := wA.sslService.FindById(app.SSLId)
+	if err != nil {
+		return fmt.Errorf("failed to find ssl for web app %w", err)
+	}
+	nginxConfig := GenerateNginxConfig(*app, ssl.CertPath, ssl.KeyPath)
+	editNginxFiles(*app, nginxConfig)
+	return edit(wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, app)
 }
 
 func (wA *WebAppService) GetWebAppForHost(host string) (*webapp.WebApp, error) {

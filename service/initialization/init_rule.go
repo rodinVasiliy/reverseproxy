@@ -2,6 +2,7 @@ package initialization
 
 import (
 	"fmt"
+	parsedrequest "reverseproxy/model/parsed_request"
 	rule "reverseproxy/model/rule"
 	service "reverseproxy/service"
 
@@ -48,7 +49,7 @@ func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		IsNot:                false,
 		MatchType:            rule.MatchNotEquals,
-		RequestParameterType: "countryCode",
+		RequestParameterType: parsedrequest.COUNTRY_CODE,
 		Raw:                  "RU",
 	}
 	exprDoc, err := rule.ExprToDoc(&cond)
@@ -62,7 +63,7 @@ func getBlockByUARuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		IsNot:                true,
 		MatchType:            rule.MatchRegex,
-		RequestParameterType: "ua",
+		RequestParameterType: parsedrequest.UA,
 		Raw:                  "^Mozilla\\/5.0.+",
 	}
 	exprDoc, err := rule.ExprToDoc(&cond)

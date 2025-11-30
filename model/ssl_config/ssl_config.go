@@ -8,3 +8,7 @@ type SSLConfiguration struct {
 	CertPath string
 	KeyPath  string
 }
+
+func (sslConfig *SSLConfiguration) GetID() primitive.ObjectID {
+	return sslConfig.ID
+}

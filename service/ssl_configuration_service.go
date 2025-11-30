@@ -19,6 +19,10 @@ func (sslS *SSLConfigurationService) FindByName(name string) (*ssl.SSLConfigurat
 	return findByName[ssl.SSLConfiguration](sslS.deps, sslS.deps.Config.Database, SSL_COLLECTION, name)
 }
 
+func (sslS *SSLConfigurationService) FindById(id primitive.ObjectID) (*ssl.SSLConfiguration, error) {
+	return findById[ssl.SSLConfiguration](sslS.deps, sslS.deps.Config.Database, SSL_COLLECTION, id)
+}
+
 func (sslS *SSLConfigurationService) Add(sslConfig *ssl.SSLConfiguration) (primitive.ObjectID, error) {
 	return add(sslS.deps, sslS.deps.Config.Database, SSL_COLLECTION, sslConfig)
 }

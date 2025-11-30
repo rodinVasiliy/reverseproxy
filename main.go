@@ -79,7 +79,7 @@ func main() {
 	ruleService := service.NewRuleService(mongoDeps, actionService)
 	policyService := service.NewPolicyService(mongoDeps, ruleService)
 	sslService := service.NewSSLConfigurationService(mongoDeps)
-	webAppService := service.NewWebAppService(mongoDeps)
+	webAppService := service.NewWebAppService(mongoDeps, sslService)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	config "reverseproxy/config/mongo_config"
+	model "reverseproxy/model"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -79,4 +80,40 @@ func add[T any](deps *config.MongoDeps, dbName, collectionName string, entity T)
 	}
 
 	return oid, nil
+}
+
+var ErrNotFound = errors.New("document not found")
+
+func delete[T any](deps *config.MongoDeps, dbName, collectionName string, id primitive.ObjectID) error {
+	ctx, cancel := deps.Ctx()
+	defer cancel()
+
+	collection := deps.Client.Database(dbName).Collection(collectionName)
+
+	res, err := collection.DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		return fmt.Errorf("failed to delete document with ID %s: %w", id.Hex(), err)
+	}
+	if res.DeletedCount == 0 {
+		return fmt.Errorf("document with id %s not found %w", id.Hex(), ErrNotFound)
+	}
+
+	return nil
+}
+
+func edit[T model.HasID](deps *config.MongoDeps, dbName, collectionName string, entity T) error {
+	ctx, cancel := deps.Ctx()
+	defer cancel()
+
+	collection := deps.Client.Database(dbName).Collection(collectionName)
+
+	id := entity.GetID()
+	if id.IsZero() {
+		return fmt.Errorf("edit entity failed: id is empty")
+	}
+	_, err := collection.ReplaceOne(ctx, bson.M{"_id": id}, entity)
+	if err != nil {
+		return fmt.Errorf("failed to edit entity %s: %w", id.Hex(), err)
+	}
+	return nil
 }
