@@ -27,9 +27,14 @@ func (wA *WebAppService) Add(webApp *webapp.WebApp) (primitive.ObjectID, error) 
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
 	}
+	id, err := add(wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, webApp)
+	if err != nil {
+		return primitive.NewObjectID(), err
+	}
+	webApp.ID = id
 	nginxConfig := GenerateNginxConfig(*webApp, ssl.CertPath, ssl.KeyPath)
 	createNginxFiles(*webApp, nginxConfig)
-	return add(wA.deps, wA.deps.Config.Database, WEBAPP_COLLECTION, webApp)
+	return id, nil
 }
 
 func (wA *WebAppService) Delete(app *webapp.WebApp) error {
