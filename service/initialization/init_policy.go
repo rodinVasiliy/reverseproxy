@@ -16,7 +16,7 @@ func GetDefaultPolicy(ps *service.PolicyService, rs *service.RuleService) (*poli
 	for _, rule := range *rules {
 		policyRuleRef = append(policyRuleRef, policy.PolicyRuleRef{RuleID: rule.ID})
 	}
-	// wl пока будет пустым
-	defaultPolicy := policy.Policy{WL: nil, Rules: policyRuleRef, Name: service.DEFAULT_POLICY_NAME}
+	wl := "95.67.162.0/24"
+	defaultPolicy := policy.Policy{WL: []string{wl}, Rules: policyRuleRef, Name: service.DEFAULT_POLICY_NAME}
 	return &defaultPolicy, nil
 }

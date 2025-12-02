@@ -2,6 +2,7 @@ package checkrequest
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	act "reverseproxy/model/action"
@@ -11,10 +12,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// проверяет, что ip есть в списке(может использоваться и WL и BL)
+// возвращает true, если ip есть в списке подсетей list (может использоваться и WL и BL)
 func checkInList(ip net.IP, list []string) bool {
 	for i := range list {
-		_, net, _ := net.ParseCIDR(list[i])
+		_, net, err := net.ParseCIDR(list[i])
+		if err != nil {
+			log.Printf("failed to parse cidr %s %s", list[i], err)
+		}
 		if net.Contains(ip) {
 			return true
 		}
