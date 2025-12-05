@@ -7,13 +7,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	check_request "reverseproxy/check_request"
+	bl "reverseproxy/config/bl"
 	log_config "reverseproxy/config/log"
 	config "reverseproxy/config/mongo_config"
 	"reverseproxy/geo"
 	wafconfig "reverseproxy/model/waf_config"
 	service "reverseproxy/service"
 	initialization "reverseproxy/service/initialization"
+	utils "reverseproxy/utils"
 	"strconv"
 	"syscall"
 	"time"
@@ -50,9 +53,20 @@ func main() {
 	}
 
 	// тут идет настройка лог файла, в котором будут отображаться ошибки
+
 	logConfig, err := log_config.NewLogConfig(port)
 	if err != nil {
 		fmt.Printf("failed to open log file %s", err)
+		return
+	}
+
+	// а что если не мастер монги?
+	var blackList *bl.BL
+	path := filepath.Join("config", "bl", "blacklist.db")
+	blackList, err = bl.NewBlacklistStore(path)
+	if err != nil {
+		fmt.Printf("failed to in it bl %s", err)
+		closeAll(logConfig, blackList)
 		return
 	}
 
@@ -61,7 +75,7 @@ func main() {
 	err = geo.InitGeo()
 	if err != nil {
 		fmt.Printf("failed to in it geo base %s", err)
-		closeAll(logConfig)
+		closeAll(logConfig, blackList)
 		return
 	}
 
@@ -70,7 +84,7 @@ func main() {
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s", err)
-		closeAll(logConfig)
+		closeAll(logConfig, blackList)
 		return
 	}
 
@@ -83,16 +97,17 @@ func main() {
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
+		utils.DropAllCollections(mongoDeps)
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
-			closeAll(logConfig)
+			closeAll(logConfig, blackList)
 			return
 		}
 		err = initialization.NewTestWebApp(policyService, sslService, webAppService)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(logConfig)
+			closeAll(logConfig, blackList)
 			return
 		}
 	} else {
@@ -103,7 +118,7 @@ func main() {
 	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
-		closeAll(logConfig)
+		closeAll(logConfig, blackList)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -112,11 +127,16 @@ func main() {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		log.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		host := r.Host
-		// if h, _, err := net.SplitHostPort(r.Host); err == nil {
-		// 	host = h
-		// } else {
-		// 	fmt.Printf("failed to split host | port %s", err)
-		// }
+		ip := utils.GetIpFromRequest(r)
+		ok, err := blackList.Exists(ip.String())
+		if err != nil {
+			fmt.Printf("failed to check request in BL %s", err)
+		}
+		if ok {
+			fmt.Println("access will be denied")
+			http.Error(w, "Access Denied", http.StatusForbidden)
+			return
+		}
 
 		// проверяем, нужно ли блокировать запрос
 		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService)
@@ -175,13 +195,14 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	closeAll(logConfig)
+	closeAll(logConfig, blackList)
 
 	log.Println("Server stopped")
 }
 
 // закрываем нужные ресурсы - файл для лога и гео базу
-func closeAll(logConfig *log_config.LogConfig) {
+func closeAll(logConfig *log_config.LogConfig, bl *bl.BL) {
 	logConfig.CloseLogFile()
 	geo.CloseGeoDB()
+	bl.Close()
 }

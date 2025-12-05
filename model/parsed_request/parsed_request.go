@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	geo "reverseproxy/geo"
+	utils "reverseproxy/utils"
 )
 
 type ParsedRequest struct {
@@ -19,7 +20,7 @@ type ParsedRequest struct {
 
 func ParseRequest(r *http.Request) *ParsedRequest {
 	var countryCode string
-	ip := getIpFromRequest(r)
+	ip := utils.GetIpFromRequest(r)
 
 	countryCode = geo.GetGeoCode(ip)
 
@@ -57,11 +58,6 @@ func GetCookie(params map[string]string, name string) (string, bool) {
 	key := "cookie:" + name
 	val, ok := params[key]
 	return val, ok
-}
-
-func getIpFromRequest(r *http.Request) net.IP {
-	xrip := r.Header.Get("X-Real-IP")
-	return net.ParseIP(xrip)
 }
 
 var IP = "ip"
