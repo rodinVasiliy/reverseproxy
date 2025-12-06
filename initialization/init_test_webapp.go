@@ -1,29 +1,29 @@
 package initialization
 
 import (
+	"context"
 	"fmt"
-	ssl "reverseproxy/model/ssl_config"
-	webapp "reverseproxy/model/web_app"
-	service "reverseproxy/service"
+	policy "reverseproxy/internal/model/policy"
+	ssl "reverseproxy/internal/model/ssl"
+	webapp "reverseproxy/internal/model/webapp"
 )
 
-func NewTestWebApp(ps *service.PolicyService, sslS *service.SSLConfigurationService, ws *service.WebAppService) error {
-	policy, err := ps.FindByName(service.DEFAULT_POLICY_NAME)
+func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) error {
+	policy, err := ps.FindByName(context.Background(), DEFAULT_POLICY_NAME)
 	if err != nil {
 		return fmt.Errorf("failed to get default policy %w", err)
 	}
 
-	// это пока не нужно, ssl в nginx еще не пробрасывается
 	sslConfig := ssl.SSLConfiguration{Name: "myproxytest.site",
 		CertPath: "/myproxytest.site/fullchain.pem", KeyPath: "/myproxytest.site/privkey.pem"}
-	sslId, err := sslS.Add(&sslConfig)
+	sslId, err := sslS.Insert(context.Background(), sslConfig)
 	if err != nil {
 		return fmt.Errorf("failed to add test ssl config %w", err)
 	}
 	host := "myproxytest.site"
 	port := 4443
 	webApp := webapp.WebApp{Name: "test", SSLId: sslId, PolicyId: policy.ID, Port: port, Upstream: "http://localhost:9091", Hosts: []string{host}}
-	_, err = ws.Add(&webApp)
+	_, err = ws.Insert(context.Background(), &webApp)
 	if err != nil {
 		return fmt.Errorf("failed to add test webapp %w", err)
 	}

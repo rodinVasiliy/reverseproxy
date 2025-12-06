@@ -5,9 +5,11 @@ import (
 	"log"
 	"net"
 	"net/http"
-	act "reverseproxy/model/action"
-	parsed_request "reverseproxy/model/parsed_request"
-	service "reverseproxy/service"
+	action "reverseproxy/internal/model/action"
+	parsed_request "reverseproxy/internal/model/parsed_request"
+	policy "reverseproxy/internal/model/policy"
+	rule "reverseproxy/internal/model/rule"
+	webapp "reverseproxy/internal/model/webapp"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -26,76 +28,55 @@ func checkInList(ip net.IP, list []string) bool {
 	return false
 }
 
-// проверяет есть ли в actions блок
-// логирует запрос если есть лог - для этого и нужно ruleName в параметрах
-// добавляет список уникальных actions чтобы потом их выполнил другой метод
-func checkActions(actionIds []primitive.ObjectID, as *service.ActionService, pr *parsed_request.ParsedRequest, ruleName string,
-	uniqueActions map[string]struct{}) bool {
-	isBlock := false
-	for i := range actionIds {
-		actionDoc, _ := as.FindById(actionIds[i])
-		action := act.ActionByName(actionDoc.Name)
-		switch action.ActionType {
-		case act.ActionBlock:
-			isBlock = true
-		case act.ActionLog:
-			actionParams := &act.ActionParams{Rule: ruleName, PR: pr}
-			action.Do(actionParams)
-		default:
-			uniqueActions[ruleName] = struct{}{}
-		}
-	}
-	return isBlock
-}
-
 // проверка, нужно ли блокировать запрос, проходимся по всем правилам из политики
-func IsBlock(r *http.Request, ws *service.WebAppService, ps *service.PolicyService,
-	rs *service.RuleService, as *service.ActionService) (bool, error) {
+func IsBlock(r *http.Request, ws *webapp.Service, ps *policy.Service,
+	rs *rule.Service, as *action.Service, executor *action.Executor) (bool, error) {
 	host := r.Host
 	if h, _, err := net.SplitHostPort(r.Host); err == nil {
 		host = h
 	}
-	webapp, err := ws.GetWebAppForHost(host)
+	webapp, err := ws.GetWebAppForHost(r.Context(), host)
 	if err != nil {
 		return false, fmt.Errorf("failed to find web app for host %s %s", host, err)
 	}
-	policy, err := ps.FindById(webapp.PolicyId)
+	policy, err := ps.FindById(r.Context(), webapp.PolicyId)
 	if err != nil {
 		return false, fmt.Errorf("failed to find policy %s", err)
 	}
 	parsedRequest := parsed_request.ParseRequest(r)
+	// проверяем наличие объекта в WL политики
 	if checkInList(parsedRequest.IP, policy.WL) {
 		return false, nil
 	}
-	isBlock := false
-	uniqueActions := map[string]struct{}{}
+
+	//
+	shouldBlock := false
 	// TODO - переделать логику
 	for _, ruleRef := range policy.Rules {
-		rule, err := rs.FindById(ruleRef.RuleID)
+		rule, err := rs.FindById(r.Context(), ruleRef.RuleID)
 		if err != nil {
 			return false, fmt.Errorf("failed to find rule %s by id %s", rule.Name, err)
 		}
 		if rule.Match(parsedRequest.ToMap()) {
 			// точно ли nil?
+			var actionIDs []primitive.ObjectID
 			if ruleRef.Actions == nil {
 				// это если у правила используются default actions(нет переопределения для actions)
-				actions := rule.Actions
-				// переименовать функцию
-				if ok := checkActions(actions, as, parsedRequest, rule.Name, uniqueActions); ok {
-					isBlock = true
-				}
+				actionIDs = rule.Actions
 			} else {
 				// это если у правила переопределен список actions
-				if ok := checkActions(ruleRef.Actions, as, parsedRequest, rule.Name, uniqueActions); ok {
-					isBlock = true
+				actionIDs = ruleRef.Actions
+			}
+			actionDocs, err := as.FindByIds(r.Context(), actionIDs)
+			if err != nil {
+				return false, fmt.Errorf("failed to find actions by ids: %w", err)
+			}
+			for _, act := range actionDocs {
+				if ok := executor.Execute(act.Name, &action.ActionParams{Rule: rule.Name, PR: parsedRequest}); ok {
+					shouldBlock = true
 				}
 			}
 		}
 	}
-	for actionDoc := range uniqueActions {
-		action := act.ActionByName(actionDoc)
-		actionParams := act.ActionParams{Rule: "", PR: parsedRequest}
-		action.Do(&actionParams)
-	}
-	return isBlock, nil
+	return shouldBlock, nil
 }

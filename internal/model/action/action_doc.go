@@ -10,6 +10,6 @@ type ActionDoc struct {
 	Name string             `bson:"name"`
 }
 
-func (ad *ActionDoc) GetID() primitive.ObjectID {
-	return ad.ID
+func (d *ActionDoc) GetID() primitive.ObjectID {
+	return d.ID
 }

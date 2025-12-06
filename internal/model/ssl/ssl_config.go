@@ -1,4 +1,4 @@
-package sslconfig
+package ssl
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 

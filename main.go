@@ -13,9 +13,15 @@ import (
 	log_config "reverseproxy/config/log"
 	config "reverseproxy/config/mongo_config"
 	"reverseproxy/geo"
-	wafconfig "reverseproxy/model/waf_config"
-	service "reverseproxy/service"
-	initialization "reverseproxy/service/initialization"
+	action "reverseproxy/internal/model/action"
+	policy "reverseproxy/internal/model/policy"
+	rule "reverseproxy/internal/model/rule"
+	ssl "reverseproxy/internal/model/ssl"
+	wafconfig "reverseproxy/internal/model/waf_config"
+	webapp "reverseproxy/internal/model/webapp"
+	repository "reverseproxy/internal/repository"
+
+	initialization "reverseproxy/initialization"
 	utils "reverseproxy/utils"
 	"strconv"
 	"syscall"
@@ -89,11 +95,22 @@ func main() {
 	}
 
 	fmt.Println("Config Initialization started...")
-	actionService := service.NewActionService(mongoDeps)
-	ruleService := service.NewRuleService(mongoDeps, actionService)
-	policyService := service.NewPolicyService(mongoDeps, ruleService)
-	sslService := service.NewSSLConfigurationService(mongoDeps)
-	webAppService := service.NewWebAppService(mongoDeps, sslService)
+	actionRepository := repository.NewMongoRepositoy[action.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
+	actionService := action.NewService(actionRepository)
+	actionRegistry := action.NewActionRegistry(&log.Logger{}, blackList)
+	actionExecutor := action.NewExecutor(actionRegistry)
+
+	ruleRepository := repository.NewMongoRepositoy[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
+	ruleService := rule.NewService(ruleRepository)
+
+	policyRepository := repository.NewMongoRepositoy[policy.Policy](mongoDeps.Client, repository.DB_NAME, repository.POLICY_COLLECTION)
+	policyService := policy.NewService(policyRepository)
+
+	sslRepository := repository.NewMongoRepositoy[ssl.SSLConfiguration](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
+	sslService := ssl.NewService(sslRepository)
+
+	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
+	webAppService := webapp.NewService(webappRepository)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
@@ -110,6 +127,7 @@ func main() {
 			closeAll(logConfig, blackList)
 			return
 		}
+		blackList.Add("212.32.212.9")
 	} else {
 		fmt.Println("Init db not required")
 	}
@@ -134,12 +152,13 @@ func main() {
 		}
 		if ok {
 			fmt.Println("access will be denied")
+			log.Printf("access from %s denied by blacklist\n", ip.String())
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
 
 		// проверяем, нужно ли блокировать запрос
-		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService)
+		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService, actionExecutor)
 		if err != nil {
 			fmt.Printf("failed to check request %s", err)
 			return
@@ -154,7 +173,7 @@ func main() {
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
 
-		webApp, err := webAppService.GetWebAppForHost(host)
+		webApp, err := webAppService.GetWebAppForHost(r.Context(), host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
 			return

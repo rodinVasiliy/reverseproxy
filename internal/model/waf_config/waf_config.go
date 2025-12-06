@@ -1,12 +1,11 @@
 package wafconfig
 
 import (
+	"context"
 	"fmt"
 	"net/http/httputil"
 	"net/url"
-	webApp "reverseproxy/model/web_app"
-
-	service "reverseproxy/service"
+	webApp "reverseproxy/internal/model/webapp"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -16,13 +15,14 @@ type WafConfig struct {
 	proxies map[primitive.ObjectID]*httputil.ReverseProxy
 }
 
-func NewWafConfig(webAppService *service.WebAppService) (*WafConfig, error) {
-	webApps, err := webAppService.FindAllWebApps()
+func NewWafConfig(webAppService *webApp.Service) (*WafConfig, error) {
+	ctx := context.Background()
+	webApps, err := webAppService.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load waf config %s", err)
 	}
 	resultMap := make(map[primitive.ObjectID]*httputil.ReverseProxy)
-	for _, webApp := range *webApps {
+	for _, webApp := range webApps {
 		proxy, err := newProxyForUpstream(webApp.Upstream)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Proxy for webApp %s", err)

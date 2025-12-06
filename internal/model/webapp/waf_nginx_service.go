@@ -1,14 +1,13 @@
-package service
+package webapp
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
-	webapp "reverseproxy/model/web_app"
 	"strings"
 )
 
-func GenerateNginxConfig(app webapp.WebApp, certPath string, keyPath string) string {
+func generateNginxConfig(app WebApp, certPath string, keyPath string) string {
 	hosts := strings.Join(app.Hosts, " ")
 
 	return fmt.Sprintf(`
@@ -33,7 +32,7 @@ server {
 `, app.Port, hosts, certPath, keyPath)
 }
 
-func createNginxFiles(app webapp.WebApp, config string) {
+func createNginxFiles(app WebApp, config string) {
 	available := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(available, []byte(config), 0644)
 
@@ -43,7 +42,7 @@ func createNginxFiles(app webapp.WebApp, config string) {
 	exec.Command("systemctl", "reload", "nginx").Run()
 }
 
-func deleteNginxFiles(app webapp.WebApp) {
+func deleteNginxFiles(app WebApp) {
 	available := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	enabled := fmt.Sprintf("/etc/nginx/sites-enabled/webapp-%s.conf", app.ID.Hex())
 
@@ -52,7 +51,7 @@ func deleteNginxFiles(app webapp.WebApp) {
 	exec.Command("systemctl", "reload", "nginx").Run()
 }
 
-func editNginxFiles(app webapp.WebApp, newConfig string) {
+func editNginxFiles(app WebApp, newConfig string) {
 	fileName := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(fileName, []byte(newConfig), 0644)
 	exec.Command("systemctl", "reload", "nginx").Run()

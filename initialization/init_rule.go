@@ -1,16 +1,17 @@
 package initialization
 
 import (
+	"context"
 	"fmt"
-	parsedrequest "reverseproxy/model/parsed_request"
-	rule "reverseproxy/model/rule"
-	service "reverseproxy/service"
+	action "reverseproxy/internal/model/action"
+	parsedrequest "reverseproxy/internal/model/parsed_request"
+	rule "reverseproxy/internal/model/rule"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
-
+func getDefaultRules(as *action.Service) ([]rule.Rule, error) {
+	ctx := context.Background()
 	// expression docs
 	geoRuleDoc, err := getGeoRuleExprDoc()
 	if err != nil {
@@ -20,12 +21,12 @@ func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block by ua expr %w", err)
 	}
-	actions, err := as.FindAllActions()
+	actions, err := as.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find actions %w", err)
 	}
-	actionsIds := make([]primitive.ObjectID, len(*actions))
-	for i, action := range *actions {
+	actionsIds := make([]primitive.ObjectID, len(actions))
+	for i, action := range actions {
 		actionsIds[i] = action.ID
 	}
 	blockByGeoRule := rule.Rule{
@@ -42,9 +43,20 @@ func GetDefaultRules(as *service.ActionService) (*[]rule.Rule, error) {
 	}
 	var rules []rule.Rule
 	rules = append(rules, blockByGeoRule, blockByUARule)
-	return &rules, nil
+	return rules, nil
 }
 
+func loadRulesToDB(rs *rule.Service, rules []rule.Rule) error {
+	for _, rule := range rules {
+		_, err := rs.Insert(context.Background(), rule)
+		if err != nil {
+			return fmt.Errorf("failed to insert rule %s :%w", rule.Name, err)
+		}
+	}
+	return nil
+}
+
+// / дефолтные правила
 func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		IsNot:                false,
