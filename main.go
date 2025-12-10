@@ -119,7 +119,7 @@ func main() {
 	sslService := ssl.NewService(sslRepository)
 
 	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
-	webAppService := webapp.NewService(webappRepository)
+	webAppService := webapp.NewService(webappRepository, sslService)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
