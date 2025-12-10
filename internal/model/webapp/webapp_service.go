@@ -23,19 +23,19 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 	return s.repository.FindAll(ctx)
 }
 
-func (s *Service) Insert(ctx context.Context, app *WebApp) (primitive.ObjectID, error) {
+func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, error) {
 	ssl, err := s.sslService.GetByID(ctx, app.ID)
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
 	}
-	id, err := s.repository.Insert(ctx, *app)
+	id, err := s.repository.Insert(ctx, app)
 	// TODO а если не primitive
 	if err != nil {
-		return primitive.NewObjectID(), err
+		return primitive.NilObjectID, err
 	}
 	app.ID = id
-	nginxConfig := generateNginxConfig(*app, ssl.CertPath, ssl.KeyPath)
-	createNginxFiles(*app, nginxConfig)
+	nginxConfig := generateNginxConfig(app, ssl.CertPath, ssl.KeyPath)
+	createNginxFiles(app, nginxConfig)
 	return id, nil
 }
 
