@@ -3,7 +3,7 @@ package parsedrequest
 import (
 	"net"
 	"net/http"
-	geo "reverseproxy/geo"
+	geo "reverseproxy/config/geo"
 	utils "reverseproxy/utils"
 )
 

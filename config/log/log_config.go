@@ -4,16 +4,19 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 )
 
 type LogConfig struct {
-	file *os.File
+	file *os.File // файл куда будет записываться лог
+	path string   // путь к файлу с логами
 }
 
-// создает файл для лога, который потом нужно будет закрыть, в пути к файлу используется порт, который использует прокси
-func NewLogConfig(port int) (*LogConfig, error) {
-	logFileName := filepath.Join("log", fmt.Sprintf("db_%d.log", port))
+func (c *LogConfig) File() *os.File {
+	return c.file
+}
+
+// создает файл для лога, по пути, указанному в параметре logFileName
+func NewLogConfig(logFileName string) (*LogConfig, error) {
 	var err error
 	var logFile *os.File
 	logFile, err = os.OpenFile(logFileName,
@@ -24,7 +27,7 @@ func NewLogConfig(port int) (*LogConfig, error) {
 
 	// Настраиваем логгер на запись в файл
 	log.SetOutput(logFile)
-	return &LogConfig{file: logFile}, err
+	return &LogConfig{file: logFile, path: logFileName}, err
 }
 
 // TODO подумать, почему я вызываю это в main и делаю метод открытым...

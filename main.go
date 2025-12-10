@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	check_request "reverseproxy/check_request"
 	bl "reverseproxy/config/bl"
+	"reverseproxy/config/geo"
 	log_config "reverseproxy/config/log"
 	config "reverseproxy/config/mongo_config"
-	"reverseproxy/geo"
 	action "reverseproxy/internal/model/action"
 	policy "reverseproxy/internal/model/policy"
 	rule "reverseproxy/internal/model/rule"
@@ -46,7 +46,7 @@ func getInItFlag() bool {
 	return os.Getenv("INIT") == "1"
 }
 
-// TO DO протестировать
+// TO DO разобраться с логами
 func main() {
 
 	fmt.Println("reverse proxy ...")
@@ -58,13 +58,22 @@ func main() {
 		return
 	}
 
-	// тут идет настройка лог файла, в котором будут отображаться ошибки
+	errorLogFileName := filepath.Join("log", fmt.Sprintf("error_%d.log", port))
+	accessLogFileName := filepath.Join("log", fmt.Sprintf("access_%d.log", port))
 
-	logConfig, err := log_config.NewLogConfig(port)
+	// тут идет настройка лог файла, в котором будут отображаться ошибки
+	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s", err)
+		fmt.Printf("failed to open log file %s :%s", errorLogFileName, err)
 		return
 	}
+	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
+	if err != nil {
+		fmt.Printf("failed to open log file %s :%s", accessLogFileName, err)
+		closeAll(nil, errorLogConfig, nil)
+		return
+	}
+	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	// а что если не мастер монги?
 	var blackList *bl.BL
@@ -72,7 +81,7 @@ func main() {
 	blackList, err = bl.NewBlacklistStore(path)
 	if err != nil {
 		fmt.Printf("failed to in it bl %s", err)
-		closeAll(logConfig, blackList)
+		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
 
@@ -81,7 +90,7 @@ func main() {
 	err = geo.InitGeo()
 	if err != nil {
 		fmt.Printf("failed to in it geo base %s", err)
-		closeAll(logConfig, blackList)
+		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
 
@@ -90,14 +99,14 @@ func main() {
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s", err)
-		closeAll(logConfig, blackList)
+		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
 
 	fmt.Println("Config Initialization started...")
 	actionRepository := repository.NewMongoRepositoy[action.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
 	actionService := action.NewService(actionRepository)
-	actionRegistry := action.NewActionRegistry(&log.Logger{}, blackList)
+	actionRegistry := action.NewActionRegistry(accessLogger, blackList)
 	actionExecutor := action.NewExecutor(actionRegistry)
 
 	ruleRepository := repository.NewMongoRepositoy[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
@@ -118,16 +127,16 @@ func main() {
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
-			closeAll(logConfig, blackList)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
 			return
 		}
 		err = initialization.NewTestWebApp(policyService, sslService, webAppService)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(logConfig, blackList)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
 			return
 		}
-		blackList.Add("212.32.212.9")
+		blackList.Add("212.32.212.9") // для тестов
 	} else {
 		fmt.Println("Init db not required")
 	}
@@ -136,7 +145,7 @@ func main() {
 	wafConfig, err := wafconfig.NewWafConfig(webAppService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
-		closeAll(logConfig, blackList)
+		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -214,14 +223,15 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	closeAll(logConfig, blackList)
+	closeAll(blackList, errorLogConfig, accessLogConfig)
 
 	log.Println("Server stopped")
 }
 
 // закрываем нужные ресурсы - файл для лога и гео базу
-func closeAll(logConfig *log_config.LogConfig, bl *bl.BL) {
-	logConfig.CloseLogFile()
+func closeAll(bl *bl.BL, errorLogConfig, accessLogConfig *log_config.LogConfig) {
+	errorLogConfig.CloseLogFile()
+	accessLogConfig.CloseLogFile()
 	geo.CloseGeoDB()
 	bl.Close()
 }

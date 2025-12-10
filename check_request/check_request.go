@@ -49,9 +49,7 @@ func IsBlock(r *http.Request, ws *webapp.Service, ps *policy.Service,
 		return false, nil
 	}
 
-	//
 	shouldBlock := false
-	// TODO - переделать логику
 	for _, ruleRef := range policy.Rules {
 		rule, err := rs.FindById(r.Context(), ruleRef.RuleID)
 		if err != nil {
