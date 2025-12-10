@@ -24,7 +24,8 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 }
 
 func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, error) {
-	ssl, err := s.sslService.GetByID(ctx, app.ID)
+	// находим ssl конфигурацию чтобы по ней создать nginx файлы
+	ssl, err := s.sslService.GetByID(ctx, app.SSLId)
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
 	}
@@ -45,7 +46,7 @@ func (s *Service) Delete(ctx context.Context, app *WebApp) error {
 }
 
 func (s *Service) Edit(ctx context.Context, app *WebApp) error {
-	ssl, err := s.sslService.GetByID(ctx, app.ID)
+	ssl, err := s.sslService.GetByID(ctx, app.SSLId)
 	if err != nil {
 		return fmt.Errorf("failed to find ssl for web app %w", err)
 	}
