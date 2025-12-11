@@ -92,7 +92,7 @@ func getBlockByUARuleExprDoc() (*rule.ExprDoc, error) {
 		IsNot:                true,
 		MatchType:            rule.MatchRegex,
 		RequestParameterType: parsedrequest.UA,
-		Raw:                  "^Mozilla\\/5.0.+",
+		Raw:                  `^(Mozilla\/5\.0|Opera\/|Chrome\/|Safari\/|Firefox\/)`,
 	}
 	exprDoc, err := rule.ExprToDoc(&cond)
 	if err != nil {
@@ -117,6 +117,6 @@ func getBlockBitrixRule() (*rule.ExprDoc, error) {
 
 var (
 	GEO_RULE_NAME    = "Block by Geo IP"
-	UA_RULE_NAME     = "Block By UA IP"
+	UA_RULE_NAME     = "Block By UA"
 	BITRIX_RULE_NAME = "Block Bitrix Access"
 )
