@@ -6,8 +6,6 @@ import (
 	action "reverseproxy/internal/model/action"
 	parsedrequest "reverseproxy/internal/model/parsed_request"
 	rule "reverseproxy/internal/model/rule"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func getDefaultRules(as *action.Service) ([]rule.Rule, error) {
@@ -21,28 +19,46 @@ func getDefaultRules(as *action.Service) ([]rule.Rule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block by ua expr %w", err)
 	}
+	blockBitrixDoc, err := getBlockBitrixRule()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block bitrix expr %w", err)
+	}
 	actions, err := as.FindAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find actions %w", err)
 	}
-	actionsIds := make([]primitive.ObjectID, len(actions))
-	for i, action := range actions {
-		actionsIds[i] = action.ID
+	logAndBlockActionNames := map[string]struct{}{
+		action.LOG_TO_DB_ACTION_NAME:     {},
+		action.BLOCK_REQUEST_ACTION_NAME: {},
 	}
+	logAndBlockActionIds := action.ActionIdsByNames(actions, logAndBlockActionNames)
+	logAndBlockAndSendToBlActionNames := map[string]struct{}{
+		action.LOG_TO_DB_ACTION_NAME:     {},
+		action.SEND_TO_BL_ACTION_NAME:    {},
+		action.BLOCK_REQUEST_ACTION_NAME: {},
+	}
+	logAndBlockAndSendToBlActionIds := action.ActionIdsByNames(actions, logAndBlockAndSendToBlActionNames)
+
 	blockByGeoRule := rule.Rule{
 		Enabled: true,
-		Name:    "Block by Geo",
+		Name:    GEO_RULE_NAME,
 		Expr:    *geoRuleDoc,
-		Actions: actionsIds,
+		Actions: logAndBlockActionIds,
 	}
 	blockByUARule := rule.Rule{
 		Enabled: true,
-		Name:    "Block by Geo",
+		Name:    UA_RULE_NAME,
 		Expr:    *blockByUADoc,
-		Actions: actionsIds,
+		Actions: logAndBlockActionIds,
+	}
+	blockBitrixRule := rule.Rule{
+		Enabled: true,
+		Name:    BITRIX_RULE_NAME,
+		Expr:    *blockBitrixDoc,
+		Actions: logAndBlockAndSendToBlActionIds,
 	}
 	var rules []rule.Rule
-	rules = append(rules, blockByGeoRule, blockByUARule)
+	rules = append(rules, blockByGeoRule, blockByUARule, blockBitrixRule)
 	return rules, nil
 }
 
@@ -84,3 +100,23 @@ func getBlockByUARuleExprDoc() (*rule.ExprDoc, error) {
 	}
 	return &exprDoc, nil
 }
+
+func getBlockBitrixRule() (*rule.ExprDoc, error) {
+	cond := rule.Condition{
+		IsNot:                false,
+		MatchType:            rule.MatchEquals,
+		RequestParameterType: parsedrequest.PATH,
+		Raw:                  "/bitrix",
+	}
+	exprDoc, err := rule.ExprToDoc(&cond)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Block Bitrix ExprDoc %w", err)
+	}
+	return &exprDoc, nil
+}
+
+var (
+	GEO_RULE_NAME    = "Block by Geo IP"
+	UA_RULE_NAME     = "Block By UA IP"
+	BITRIX_RULE_NAME = "Block Bitrix Access"
+)

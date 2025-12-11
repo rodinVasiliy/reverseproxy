@@ -13,3 +13,13 @@ type ActionDoc struct {
 func (d *ActionDoc) GetID() primitive.ObjectID {
 	return d.ID
 }
+
+func ActionIdsByNames(actions []ActionDoc, actionNames map[string]struct{}) []primitive.ObjectID {
+	result := make([]primitive.ObjectID, 0, len(actionNames))
+	for _, action := range actions {
+		if _, ok := actionNames[action.Name]; ok {
+			result = append(result, action.ID)
+		}
+	}
+	return result
+}
