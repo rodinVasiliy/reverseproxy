@@ -79,22 +79,30 @@ func (c *Condition) Init() error {
 func (c *Condition) Match(requstMap map[string]string) bool {
 	c.Init()
 	value := requstMap[c.RequestParameterType]
+	result := false
 	switch c.MatchType {
 	case MatchEquals:
-		return value == c.Raw
+		if value == c.Raw {
+			result = true
+		}
 	case MatchNotEquals:
-		return value != c.Raw
+		if value != c.Raw {
+			result = true
+		}
 	case MatchIn:
 		for _, v := range c.inVals {
 			if value == strings.TrimSpace(v) {
-				return true
+				result = true
+				break
 			}
 		}
-		return false
 	case MatchRegex:
-		return c.regex.MatchString(value)
+		result = c.regex.MatchString(value)
 	}
-	return false
+	if c.IsNot {
+		return !result
+	}
+	return result
 }
 
 type AlwaysTrueCondition struct {
