@@ -27,7 +27,7 @@ func ParseRequest(r *http.Request) *ParsedRequest {
 	rp := ParsedRequest{
 		IP:          ip,
 		Host:        r.Host,
-		Path:        r.URL.RawPath,
+		Path:        r.URL.Path,
 		UA:          r.Header.Get("User-Agent"),
 		Cookies:     r.Cookies(),
 		Uri:         r.RequestURI,
