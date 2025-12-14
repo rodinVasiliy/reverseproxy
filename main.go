@@ -49,6 +49,8 @@ func getInItFlag() bool {
 // TO DO разобраться с логами
 func main() {
 
+	// fmt в консольку для информации - вся инфа до такого как все запустилось
+	// log - для ошибок при работе с базой и прочим
 	fmt.Println("reverse proxy ...")
 
 	// порт который использует прокси сервер, мы будем передавать его в заголовок, просто для инфо
@@ -67,6 +69,8 @@ func main() {
 		fmt.Printf("failed to open log file %s :%s", errorLogFileName, err)
 		return
 	}
+	// пока что все ошибки будут логироваться в error log
+	log.SetOutput(errorLogConfig.File())
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s", accessLogFileName, err)
@@ -152,7 +156,6 @@ func main() {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
-		log.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		host := r.Host
 		ip := utils.GetIpFromRequest(r)
 		ok, err := blackList.Exists(ip.String())
@@ -161,7 +164,6 @@ func main() {
 		}
 		if ok {
 			fmt.Println("access will be denied")
-			log.Printf("access from %s denied by blacklist\n", ip.String())
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
@@ -185,6 +187,7 @@ func main() {
 		webApp, err := webAppService.GetWebAppForHost(r.Context(), host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
+			// может тут надо блок?
 			return
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
@@ -232,6 +235,6 @@ func main() {
 func closeAll(bl *bl.BL, errorLogConfig, accessLogConfig *log_config.LogConfig) {
 	errorLogConfig.CloseLogFile()
 	accessLogConfig.CloseLogFile()
-	geo.CloseGeoDB()
+	geo.CloseGeoDB() // подумать, может как-то по-лучше организовать работу с гео
 	bl.Close()
 }

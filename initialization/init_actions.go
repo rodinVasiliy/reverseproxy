@@ -16,8 +16,12 @@ func getDefaultActions() []action.ActionDoc {
 	blockRequestActionDoc := action.ActionDoc{
 		Name: action.BLOCK_REQUEST_ACTION_NAME,
 	}
+	sendToBLActionDoc := action.ActionDoc{
+		Name: action.SEND_TO_BL_ACTION_NAME,
+	}
 	actionDocs = append(actionDocs, logToDBActionDoc)
 	actionDocs = append(actionDocs, blockRequestActionDoc)
+	actionDocs = append(actionDocs, sendToBLActionDoc)
 	return actionDocs
 }
 

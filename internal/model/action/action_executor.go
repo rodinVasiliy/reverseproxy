@@ -1,5 +1,7 @@
 package action
 
+import "log"
+
 type Executor struct {
 	registry *Registry
 }
@@ -31,7 +33,7 @@ func (e *Executor) Execute(actionName string, ap *ActionParams) bool {
 	}
 	action, ok := e.registry.Get(actionName)
 	if !ok {
-		// TO DO логировать ошибку куда-то
+		log.Printf("failed to find action %s in base\n", actionName)
 		return false
 	}
 	action.Do(ap)
