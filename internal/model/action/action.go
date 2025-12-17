@@ -4,6 +4,7 @@ import (
 	"log"
 	bl "reverseproxy/config/bl"
 	parsedRequest "reverseproxy/internal/model/parsed_request"
+	"time"
 )
 
 type ActionParams struct {
@@ -25,11 +26,12 @@ func (a *LogToDBAction) Do(ap *ActionParams) error {
 }
 
 type SendToBLAction struct {
-	BlackList *bl.BL
+	BlackList  bl.Blacklist
+	defaultTtl time.Duration
 }
 
 func (a *SendToBLAction) Do(ap *ActionParams) error {
-	return a.BlackList.Add(ap.PR.IP.String())
+	return a.BlackList.Add(ap.PR.IP.String(), a.defaultTtl)
 }
 
 type BlockRequestAction struct {

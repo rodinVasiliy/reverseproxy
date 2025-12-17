@@ -3,17 +3,18 @@ package action
 import (
 	"log"
 	bl "reverseproxy/config/bl"
+	"time"
 )
 
 type Registry struct {
 	actions map[string]ActionLogic
 }
 
-func NewActionRegistry(logger *log.Logger, bl *bl.BL) *Registry {
+func NewActionRegistry(logger *log.Logger, bl bl.Blacklist) *Registry {
 	return &Registry{
 		actions: map[string]ActionLogic{
 			LOG_TO_DB_ACTION_NAME:     &LogToDBAction{Logger: logger},
-			SEND_TO_BL_ACTION_NAME:    &SendToBLAction{BlackList: bl},
+			SEND_TO_BL_ACTION_NAME:    &SendToBLAction{BlackList: bl, defaultTtl: time.Hour * 24},
 			BLOCK_REQUEST_ACTION_NAME: &BlockRequestAction{},
 		},
 	}

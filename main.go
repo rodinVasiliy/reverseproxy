@@ -79,10 +79,10 @@ func main() {
 	}
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
-	// а что если не мастер монги?
-	var blackList *bl.BL
-	path := filepath.Join("config", "bl", "blacklist.db")
-	blackList, err = bl.NewBlacklistStore(path)
+	var blackList *bl.RedisBL
+	// TODO развернуть эту штуку и протестировать работу BL с разных нод
+	blAddr := "localhost:9999"
+	blackList, err = bl.NewRedisBL(blAddr, "", 0)
 	if err != nil {
 		fmt.Printf("failed to in it bl %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -140,7 +140,6 @@ func main() {
 			closeAll(blackList, errorLogConfig, accessLogConfig)
 			return
 		}
-		blackList.Add("212.32.212.9") // для тестов
 	} else {
 		fmt.Println("Init db not required")
 	}
@@ -232,7 +231,7 @@ func main() {
 }
 
 // закрываем нужные ресурсы - файл для лога и гео базу
-func closeAll(bl *bl.BL, errorLogConfig, accessLogConfig *log_config.LogConfig) {
+func closeAll(bl bl.Blacklist, errorLogConfig, accessLogConfig *log_config.LogConfig) {
 	errorLogConfig.CloseLogFile()
 	accessLogConfig.CloseLogFile()
 	geo.CloseGeoDB() // подумать, может как-то по-лучше организовать работу с гео
