@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	ssl "reverseproxy/internal/model/ssl"
 	"strings"
 )
 
-func generateNginxConfig(app WebApp, certPath string, keyPath string) string {
+func generateNginxConfig(app WebApp, certFileName string, keyFileName string) string {
 	hosts := strings.Join(app.Hosts, " ")
+	certPath := filepath.Join(ssl.SSL_FILES_PATH, certFileName)
+	keyPath := filepath.Join(ssl.SSL_FILES_PATH, keyFileName)
 
 	return fmt.Sprintf(`
 server {

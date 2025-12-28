@@ -15,7 +15,7 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) er
 	}
 
 	sslConfig := ssl.SSLConfiguration{Name: "myproxytest.site",
-		CertPath: "/myproxytest.site/fullchain.pem", KeyPath: "/myproxytest.site/privkey.pem"}
+		CertFileName: "fullchain.pem", KeyFileName: "privkey.pem"}
 	sslId, err := sslS.Insert(context.Background(), sslConfig)
 	if err != nil {
 		return fmt.Errorf("failed to add test ssl config %w", err)

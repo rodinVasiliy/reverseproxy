@@ -30,7 +30,11 @@ func (r *MongoRepository[T]) collection() *mongo.Collection {
 	return r.client.Database(r.dbName).Collection(r.collectionName)
 }
 
-// точно ли ссылку?
+// FindOne возвращает ссылку на документ по фильтру filter
+//
+// Возвращает :
+//   - ErrNotFound если документа не существует
+//   - любую другую ошибку при ошибки с базой данных
 func (r *MongoRepository[T]) FindOne(ctx context.Context, filter any) (*T, error) {
 	var result T
 	err := r.collection().FindOne(ctx, filter).Decode(&result)
@@ -43,7 +47,11 @@ func (r *MongoRepository[T]) FindOne(ctx context.Context, filter any) (*T, error
 	return &result, nil
 }
 
-// точно ли ссылку?
+// FindByID возвращает документ по id
+//
+// Возвращает:
+//   - ErrNotFound если документа не существует
+//   - любую другую ошибку при ошибки с базой данных
 func (r *MongoRepository[T]) FindById(ctx context.Context, id primitive.ObjectID) (*T, error) {
 	return r.FindOne(ctx, bson.M{"_id": id})
 }

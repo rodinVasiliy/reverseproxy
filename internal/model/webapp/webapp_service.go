@@ -25,7 +25,7 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 
 func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, error) {
 	// находим ssl конфигурацию чтобы по ней создать nginx файлы
-	ssl, err := s.sslService.GetByID(ctx, app.SSLId)
+	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
 	if err != nil {
 		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
 	}
@@ -35,7 +35,7 @@ func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, e
 		return primitive.NilObjectID, err
 	}
 	app.ID = id
-	nginxConfig := generateNginxConfig(app, ssl.CertPath, ssl.KeyPath)
+	nginxConfig := generateNginxConfig(app, ssl.CertFileName, ssl.KeyFileName)
 	createNginxFiles(app, nginxConfig)
 	return id, nil
 }
@@ -46,15 +46,19 @@ func (s *Service) Delete(ctx context.Context, app *WebApp) error {
 }
 
 func (s *Service) Edit(ctx context.Context, app *WebApp) error {
-	ssl, err := s.sslService.GetByID(ctx, app.SSLId)
+	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
 	if err != nil {
 		return fmt.Errorf("failed to find ssl for web app %w", err)
 	}
-	nginxConfig := generateNginxConfig(*app, ssl.CertPath, ssl.KeyPath)
+	nginxConfig := generateNginxConfig(*app, ssl.CertFileName, ssl.KeyFileName)
 	editNginxFiles(*app, nginxConfig)
 	return s.repository.Update(ctx, app)
 }
 
 func (s *Service) GetWebAppForHost(ctx context.Context, host string) (*WebApp, error) {
 	return s.repository.FindOne(ctx, bson.M{"hosts": host})
+}
+
+func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*WebApp, error) {
+	return s.repository.FindById(ctx, id)
 }

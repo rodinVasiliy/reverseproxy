@@ -10,7 +10,7 @@ type WebApp struct {
 	PolicyId primitive.ObjectID `bson:"policyId"` // id политики которая будет использоваться в вебапе
 	Port     int                `bson:"port"`     // порт который будет слушать nginx
 	SSLId    primitive.ObjectID `bson:"SSLId"`    // id ssl конфига
-	Upstream string             `bson:"upstream"` // upstream(ip + порт) куда будут направляться запросы
+	Upstream string             `bson:"upstream"` // upstream(ip) куда будут направляться запросы
 	Hosts    []string           `bson:"hosts"`    // хосты для которых будет использоваться этот вебап
 }
 
