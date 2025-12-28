@@ -18,6 +18,10 @@ func validationMessage(field, tag string) string {
 		return "certificate file must be .pem, .crt or .cer"
 	case "keyfilename":
 		return "key file must be .pem or .key"
+	case "host":
+		return "invalid hostname value "
+	case "upstream":
+		return "upstream must contain only [0-9] and '.'"
 	default:
 		return "invalid value"
 	}

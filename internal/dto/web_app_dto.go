@@ -9,12 +9,12 @@ import (
 // TODO - скорректировать валидацию
 type WebAppDTO struct {
 	ID       string   `json:"id" validate:"omitempty,hexadecimal,len=24"`
-	Name     string   `json:"name" validate:"required"`
+	Name     string   `json:"name" validate:"required,webappname"`
 	PolicyId string   `json:"policyId" validate:"omitempty,hexadecimal,len=24"`
 	Port     int      `json:"port" validate:"min=1,max=65535"`
 	SSLId    string   `json:"sslId" validate:"omitempty,hexadecimal,len=24"`
-	Upstream string   `json:"upstream" validate:"required"`
-	Hosts    []string `json:"hosts" validate:"min=1,dive,hostname"`
+	Upstream string   `json:"upstream" validate:"required,upstream"`
+	Hosts    []string `json:"hosts" validate:"min=1,dive,host"` // dive = проверять каждый элемент
 }
 
 func WebAppToDTO(webapp webapp.WebApp) *WebAppDTO {

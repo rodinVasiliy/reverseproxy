@@ -80,7 +80,6 @@ func main() {
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
-	// TODO развернуть эту штуку и протестировать работу BL с разных нод
 	blAddr := "localhost:9999"
 	blackList, err = bl.NewRedisBL(blAddr, "", 0)
 	if err != nil {
@@ -186,7 +185,7 @@ func main() {
 		webApp, err := webAppService.GetWebAppForHost(r.Context(), host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
-			// может тут надо блок?
+			// может тут надо блок? или ошибку 5**
 			return
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
