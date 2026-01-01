@@ -13,8 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterSSLAppRoutes(r *gin.Engine, s *ssl.Service) {
-	g := r.Group("api/ssl")
+func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service) {
+	g := r.Group("/ssls")
 	{
 		g.GET("", getSSLConfigs(s))
 		g.POST("", createSSLConfig(s))

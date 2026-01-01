@@ -14,8 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterWebAppRoutes(r *gin.Engine, s *webapp.Service) {
-	g := r.Group("api/webapps")
+func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service) {
+	g := r.Group("/webapps")
 	{
 		g.GET("", getWebApss(s))
 		g.POST("", createWebApp(s))

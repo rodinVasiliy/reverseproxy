@@ -27,3 +27,7 @@ func (s *Service) FindByName(ctx context.Context, name string) (*Policy, error) 
 func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*Policy, error) {
 	return s.repository.FindById(ctx, id)
 }
+
+func (s *Service) FindAll(ctx context.Context) ([]Policy, error) {
+	return s.repository.FindAll(ctx)
+}

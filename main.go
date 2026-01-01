@@ -13,6 +13,8 @@ import (
 	"reverseproxy/config/geo"
 	log_config "reverseproxy/config/log"
 	config "reverseproxy/config/mongo_config"
+	"reverseproxy/internal/http/handler"
+	"reverseproxy/internal/http/middleware"
 	action "reverseproxy/internal/model/action"
 	policy "reverseproxy/internal/model/policy"
 	rule "reverseproxy/internal/model/rule"
@@ -27,6 +29,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -123,6 +126,15 @@ func main() {
 
 	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webAppService := webapp.NewService(webappRepository, sslService)
+
+	// API
+	r := gin.Default()
+	r.Use(middleware.CORS())
+	api := r.Group("/api")
+	handler.RegisterActionRoutes(api, actionService)
+	handler.RegisterPolicyRoutes(api, policyService)
+	handler.RegisterSSLRoutes(api, sslService)
+	handler.RegisterWebAppRoutes(api, webAppService)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
