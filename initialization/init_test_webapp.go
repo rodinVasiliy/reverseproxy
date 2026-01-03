@@ -15,7 +15,7 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) er
 		return fmt.Errorf("failed to get default policy %w", err)
 	}
 
-	certFileName := filepath.Join(ssl.SSL_FILES_PATH, "myproxytest.site")
+	certFileName := filepath.Join(ssl.SSL_FILES_PATH, "fullchain.pem")
 	keyFileName := filepath.Join(ssl.SSL_FILES_PATH, "privkey.pem")
 	sslConfig := ssl.SSLConfiguration{Name: "myproxytest.site",
 		CertFileName: certFileName, KeyFileName: keyFileName}
