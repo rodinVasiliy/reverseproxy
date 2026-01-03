@@ -148,9 +148,11 @@ func main() {
 		handler.RegisterSSLRoutes(api, sslService)
 		handler.RegisterWebAppRoutes(api, webAppService)
 
-		if err := adminRouter.Run(":9000"); err != nil {
-			log.Printf("admin api stopped: %v", err)
-		}
+		go func() {
+			if err := adminRouter.Run(":9000"); err != nil {
+				log.Printf("admin api stopped: %v", err)
+			}
+		}()
 	}
 
 	if getInItFlag() {
