@@ -18,8 +18,8 @@ func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service) {
 	{
 		g.GET("", getSSLConfigs(s))
 		g.POST("", createSSLConfig(s))
-		g.DELETE(":/id", deleteSSLConfig(s))
-		g.PUT(":/id", updateSSLConfig(s))
+		g.DELETE("/:id", deleteSSLConfig(s))
+		g.PUT("/:id", updateSSLConfig(s))
 	}
 }
 
