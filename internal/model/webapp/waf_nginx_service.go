@@ -5,14 +5,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	ssl "reverseproxy/internal/model/ssl"
 	"strings"
 )
 
+var SSL_FILES_PATH = "/etc/nginx/ssl"
+
 func generateNginxConfig(app WebApp, certFileName string, keyFileName string) string {
 	hosts := strings.Join(app.Hosts, " ")
-	certPath := filepath.Join(ssl.SSL_FILES_PATH, certFileName)
-	keyPath := filepath.Join(ssl.SSL_FILES_PATH, keyFileName)
+	certPath := filepath.Join(SSL_FILES_PATH, certFileName)
+	keyPath := filepath.Join(SSL_FILES_PATH, keyFileName)
 
 	return fmt.Sprintf(`
 server {

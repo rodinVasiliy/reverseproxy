@@ -1,8 +1,6 @@
 package ssl
 
 import (
-	"path/filepath"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -12,8 +10,6 @@ type SSLConfiguration struct {
 	CertFileName string             `bson:"cert"`
 	KeyFileName  string             `bson:"key"`
 }
-
-var SSL_FILES_PATH = filepath.Join("etc", "nginx", "ssl")
 
 func (sslConfig *SSLConfiguration) GetID() primitive.ObjectID {
 	return sslConfig.ID
