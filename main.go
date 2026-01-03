@@ -220,8 +220,8 @@ func main() {
 			return
 		}
 		proxy := wafConfig.GetProxyForWebApp(webApp)
-		fmt.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
-		log.Printf("Forward request %s %s to upstream", r.Method, r.URL.Path)
+		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
+		log.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
 

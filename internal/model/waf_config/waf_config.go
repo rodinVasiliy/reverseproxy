@@ -6,12 +6,11 @@ import (
 	"net/http/httputil"
 	"net/url"
 	webApp "reverseproxy/internal/model/webapp"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// key - domain value - webapplication
+// key - webapp id, value - proxy with upstream
 type WafConfig struct {
 	proxies map[primitive.ObjectID]*httputil.ReverseProxy
 }
@@ -24,7 +23,7 @@ func NewWafConfig(webAppService *webApp.Service) (*WafConfig, error) {
 	}
 	resultMap := make(map[primitive.ObjectID]*httputil.ReverseProxy)
 	for _, webApp := range webApps {
-		proxy, err := newProxyForUpstream(webApp.Upstream + ":" + strconv.Itoa(webApp.Port))
+		proxy, err := newProxyForUpstream(webApp.Upstream)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Proxy for webApp %s", err)
 		}
