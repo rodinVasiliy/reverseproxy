@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os/exec"
 	mongo_config "reverseproxy/config/mongo_config"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,4 +32,10 @@ func DropAllCollections(deps *mongo_config.MongoDeps) error {
 		}
 	}
 	return nil
+}
+
+// удаляет файлы nginx для вебапов(если использовать удаление вебапа, то файл удалится сам, но при чистке всей базы эти файлы надо удалять вручную)
+func DropOldWebappFiles() {
+	exec.Command("bash", "-c", "rm -f /etc/nginx/sites-available/webapp-*").Run()
+	exec.Command("bash", "-c", "rm -f /etc/nginx/sites-enabled/webapp-*").Run()
 }
