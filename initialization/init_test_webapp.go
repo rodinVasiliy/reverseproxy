@@ -3,6 +3,7 @@ package initialization
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	policy "reverseproxy/internal/model/policy"
 	ssl "reverseproxy/internal/model/ssl"
 	webapp "reverseproxy/internal/model/webapp"
@@ -14,8 +15,10 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) er
 		return fmt.Errorf("failed to get default policy %w", err)
 	}
 
-	sslConfig := ssl.SSLConfiguration{Name: "myproxytest.site",
-		CertFileName: "fullchain.pem", KeyFileName: "privkey.pem"}
+	certFileName := filepath.Join(ssl.SSL_FILES_PATH, "myproxytest.site")
+	keyFileName := filepath.Join(ssl.SSL_FILES_PATH, "privkey.pem")
+	sslConfig := ssl.SSLConfiguration{Name: certFileName,
+		CertFileName: "fullchain.pem", KeyFileName: keyFileName}
 	sslId, err := sslS.Insert(context.Background(), sslConfig)
 	if err != nil {
 		return fmt.Errorf("failed to add test ssl config %w", err)

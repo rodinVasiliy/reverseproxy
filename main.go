@@ -33,6 +33,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// порт прокси(waf), куда nginx будет отправлять запросы
 func getPort() (int, error) {
 	portStr := os.Getenv("PROXY_PORT")
 	if portStr == "" {
@@ -43,6 +44,15 @@ func getPort() (int, error) {
 		return -1, fmt.Errorf("failed to parse proxy port %s %w", portStr, err)
 	}
 	return port, nil
+}
+
+// роль монги(либо мастер либо слейв)
+func getMongoRoleFromEnv() string {
+	role := os.Getenv("MONGO_ROLE")
+	if role == "" {
+		role = "master"
+	}
+	return role
 }
 
 func getInItFlag() bool {
@@ -102,7 +112,8 @@ func main() {
 
 	fmt.Println("Getting mongo db dependencies ...")
 	// подключаемся к монгодб
-	mongoDeps, err := config.NewMongoDeps()
+	role := getMongoRoleFromEnv()
+	mongoDeps, err := config.NewMongoDeps(role)
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -127,14 +138,20 @@ func main() {
 	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webAppService := webapp.NewService(webappRepository, sslService)
 
-	// API
-	r := gin.Default()
-	r.Use(middleware.CORS())
-	api := r.Group("/api")
-	handler.RegisterActionRoutes(api, actionService)
-	handler.RegisterPolicyRoutes(api, policyService)
-	handler.RegisterSSLRoutes(api, sslService)
-	handler.RegisterWebAppRoutes(api, webAppService)
+	// API у нас будет слушать 9000 порт, запросы на API будут приходить с nginx
+	if role == "master" {
+		adminRouter := gin.Default()
+		adminRouter.Use(middleware.CORS())
+		api := adminRouter.Group("/admin/api")
+		handler.RegisterActionRoutes(api, actionService)
+		handler.RegisterPolicyRoutes(api, policyService)
+		handler.RegisterSSLRoutes(api, sslService)
+		handler.RegisterWebAppRoutes(api, webAppService)
+
+		if err := adminRouter.Run(":9000"); err != nil {
+			log.Printf("admin api stopped: %v", err)
+		}
+	}
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")

@@ -23,7 +23,7 @@ func InItDB(ps *policy.Service, as *action.Service, rs *rule.Service) error {
 		return fmt.Errorf("failed to load rules to db: %w", err)
 	}
 
-	defaultPolicy, err := getDefaultPolicy(ps, rs)
+	defaultPolicy, err := getDefaultPolicy(rs)
 	if err != nil {
 		return fmt.Errorf("failed to get default policy: %w", err)
 	}

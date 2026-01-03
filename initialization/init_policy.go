@@ -7,7 +7,7 @@ import (
 	rule "reverseproxy/internal/model/rule"
 )
 
-func getDefaultPolicy(ps *policy.Service, rs *rule.Service) (*policy.Policy, error) {
+func getDefaultPolicy(rs *rule.Service) (*policy.Policy, error) {
 	ctx := context.Background()
 	rules, err := rs.FindAll(ctx)
 	if err != nil {

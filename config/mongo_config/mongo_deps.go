@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"time"
@@ -27,11 +26,11 @@ func (m *MongoDeps) Ctx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), timeout)
 }
 
-func NewMongoDeps() (*MongoDeps, error) {
+func NewMongoDeps(role string) (*MongoDeps, error) {
 	mongoConfigFilePath := filepath.Join("config", "mongo_config", "config.yaml")
 	mongoConfig, err := LoadConfig(mongoConfigFilePath)
 
-	mongoConfig.Role = getRoleFromEnv()
+	mongoConfig.Role = role
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load mongo config %w", err)
@@ -66,12 +65,4 @@ func getMongoClient(timeout time.Duration, mongoConfig *MongoConfig) (*mongo.Cli
 	}
 
 	return client, nil
-}
-
-func getRoleFromEnv() string {
-	role := os.Getenv("MONGO_ROLE")
-	if role == "" {
-		role = "master"
-	}
-	return role
 }
