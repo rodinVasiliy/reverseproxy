@@ -6,7 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// TODO - скорректировать валидацию
 type WebAppDTO struct {
 	ID       string   `json:"id" validate:"omitempty,hexadecimal,len=24"`
 	Name     string   `json:"name" validate:"required,webappname"`

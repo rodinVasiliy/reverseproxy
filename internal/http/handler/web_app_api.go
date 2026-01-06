@@ -24,21 +24,17 @@ func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service) {
 	}
 }
 
+// здесь используется webapp.WebappResponce в качестве выхода
 func getWebApss(s *webapp.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		apps, err := s.FindAll(c.Request.Context())
+		apps, err := s.List(c.Request.Context())
 		if err != nil {
 			log.Printf("failed to find all web apps: %v", err)
 			httpx.InternalError(c)
 			return
 		}
 
-		dtos := make([]webappDto.WebAppDTO, 0, len(apps))
-		for _, app := range apps {
-			dtos = append(dtos, *webappDto.WebAppToDTO(app))
-		}
-
-		c.JSON(200, dtos)
+		c.JSON(200, apps)
 	}
 }
 
