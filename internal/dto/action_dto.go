@@ -1,11 +1,12 @@
 package dto
 
 import (
-	action "reverseproxy/internal/model/action"
+	action "reverseproxy/internal/domain/action"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// TO DO - а возможно эта штука нам и не понадобится
 type ActionDTO struct {
 	ID   string `json:"id" validate:"omitempty,hexadecimal,len=24"`
 	Name string `json:"name" validate:"required,min=3,max=64"`

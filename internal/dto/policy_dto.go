@@ -1,7 +1,7 @@
 package dto
 
 import (
-	policy "reverseproxy/internal/model/policy"
+	policy "reverseproxy/internal/domain/policy"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

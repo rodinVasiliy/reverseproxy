@@ -1,7 +1,7 @@
 package dto
 
 import (
-	webapp "reverseproxy/internal/model/webapp"
+	webapp "reverseproxy/internal/domain/webapp"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

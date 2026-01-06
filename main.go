@@ -8,23 +8,24 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	check_request "reverseproxy/check_request"
-	bl "reverseproxy/config/bl"
-	"reverseproxy/config/geo"
-	log_config "reverseproxy/config/log"
-	config "reverseproxy/config/mongo_config"
-	"reverseproxy/internal/http/handler"
-	"reverseproxy/internal/http/middleware"
-	action "reverseproxy/internal/model/action"
-	policy "reverseproxy/internal/model/policy"
-	rule "reverseproxy/internal/model/rule"
-	ssl "reverseproxy/internal/model/ssl"
-	wafconfig "reverseproxy/internal/model/waf_config"
-	webapp "reverseproxy/internal/model/webapp"
-	repository "reverseproxy/internal/repository"
+	actionDoc "reverseproxy/internal/domain/action"
+	policy "reverseproxy/internal/domain/policy"
+	rule "reverseproxy/internal/domain/rule"
+	ssl "reverseproxy/internal/domain/ssl"
+	webapp "reverseproxy/internal/domain/webapp"
+	bl "reverseproxy/internal/infrastructure/config/bl"
+	geo "reverseproxy/internal/infrastructure/config/geo"
+	log_config "reverseproxy/internal/infrastructure/config/log"
+	config "reverseproxy/internal/infrastructure/config/mongo_config"
+	repository "reverseproxy/internal/infrastructure/mongo"
+	"reverseproxy/internal/transport/http/handler"
+	"reverseproxy/internal/transport/http/middleware"
+	action "reverseproxy/internal/waf/action"
+	check_request "reverseproxy/internal/waf/check_request"
 
-	initialization "reverseproxy/initialization"
-	utils "reverseproxy/utils"
+	initialization "reverseproxy/internal/initialization"
+	utils "reverseproxy/internal/utils"
+	manager "reverseproxy/internal/waf/proxy"
 	"strconv"
 	"syscall"
 	"time"
@@ -121,8 +122,10 @@ func main() {
 	}
 
 	fmt.Println("Config Initialization started...")
-	actionRepository := repository.NewMongoRepositoy[action.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
-	actionService := action.NewService(actionRepository)
+	actionRepository := repository.NewMongoRepositoy[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
+	actionService := actionDoc.NewService(actionRepository)
+
+	// сами actions, зашитые в код
 	actionRegistry := action.NewActionRegistry(accessLogger, blackList)
 	actionExecutor := action.NewExecutor(actionRegistry)
 
@@ -176,7 +179,7 @@ func main() {
 	}
 
 	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
-	wafConfig, err := wafconfig.NewWafConfig(webAppService)
+	manager, err := manager.NewManager(webAppService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -220,7 +223,7 @@ func main() {
 			// может тут надо блок? или ошибку 5**
 			return
 		}
-		proxy := wafConfig.GetProxyForWebApp(webApp)
+		proxy := manager.GetProxyForWebApp(webApp)
 		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		log.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)

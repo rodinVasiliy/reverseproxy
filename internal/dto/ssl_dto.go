@@ -1,7 +1,7 @@
 package dto
 
 import (
-	ssl "reverseproxy/internal/model/ssl"
+	ssl "reverseproxy/internal/domain/ssl"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
