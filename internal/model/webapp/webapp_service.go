@@ -18,8 +18,8 @@ type Service struct {
 	policyService *policy.Service
 }
 
-func NewService(repo *repository.MongoRepository[WebApp], sslService *ssl.Service) *Service {
-	return &Service{repository: repo, sslService: sslService}
+func NewService(repo *repository.MongoRepository[WebApp], sslService *ssl.Service, policyService *policy.Service) *Service {
+	return &Service{repository: repo, sslService: sslService, policyService: policyService}
 }
 
 func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
