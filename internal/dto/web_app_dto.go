@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"fmt"
 	webapp "reverseproxy/internal/domain/webapp"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -45,4 +46,8 @@ func DTOToWebApp(dto WebAppDTO) (*webapp.WebApp, error) {
 		Upstream: dto.Upstream,
 		Port:     dto.Port,
 	}, nil
+}
+
+func (dto WebAppDTO) String() string {
+	return fmt.Sprintf("name:%s; port:%v; upstream:%s; policyId:%s; sslId:%s, hosts count:%v", dto.Name, dto.Port, dto.Upstream, dto.PolicyId, dto.SSLId, len(dto.Hosts))
 }

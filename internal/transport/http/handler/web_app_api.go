@@ -42,6 +42,7 @@ func createWebApp(s *webapp.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var webAppDTO webappDto.WebAppDTO
 		if err := c.ShouldBindJSON(&webAppDTO); err != nil {
+			log.Printf("invalid json:%s", webAppDTO.String())
 			httpx.BadRequest(c, "invalid json")
 			return
 		}
@@ -49,15 +50,18 @@ func createWebApp(s *webapp.Service) gin.HandlerFunc {
 		if err := dto.Validate.Struct(&webAppDTO); err != nil {
 			var ve validator.ValidationErrors
 			if errors.As(err, &ve) {
+				log.Println("validation error")
 				httpx.ValidationError(c, ve)
 				return
 			}
+			log.Println("invalid request")
 			httpx.BadRequest(c, "invalid request")
 			return
 		}
 
 		webapp, err := webappDto.DTOToWebApp(webAppDTO)
 		if err != nil {
+			log.Printf("failed to convert dto to webapp")
 			httpx.BadRequest(c, err.Error())
 			return
 		}
