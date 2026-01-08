@@ -27,7 +27,7 @@ func (m *MongoDeps) Ctx() (context.Context, context.CancelFunc) {
 }
 
 func NewMongoDeps(role string) (*MongoDeps, error) {
-	mongoConfigFilePath := filepath.Join("infrastructure", "config", "mongo_config", "config.yaml")
+	mongoConfigFilePath := filepath.Join("internal", "infrastructure", "config", "mongo_config", "config.yaml")
 	mongoConfig, err := LoadConfig(mongoConfigFilePath)
 
 	mongoConfig.Role = role
