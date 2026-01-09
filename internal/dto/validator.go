@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"net"
 	"regexp"
 	"strings"
 
@@ -10,7 +9,7 @@ import (
 
 // ограничиваем название файла определенным шаблоном, чтобы не было непонятных символов
 var safeFileName = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
-var upstreamRegexp = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
+var upstreamRegexp = regexp.MustCompile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost):\d{2,5}$`)
 var hostnameRegex = regexp.MustCompile(`^([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$`)
 
 func certFilenameValidator(fl validator.FieldLevel) bool {
@@ -54,14 +53,7 @@ func webAppNameValidator(fl validator.FieldLevel) bool {
 func upstreamValidator(fl validator.FieldLevel) bool {
 	v := fl.Field().String()
 
-	if !upstreamRegexp.MatchString(v) {
-		return false
-	}
-
-	if ip := net.ParseIP(v); ip == nil {
-		return false
-	}
-	return true
+	return upstreamRegexp.MatchString(v)
 }
 
 func hostnameValidator(fl validator.FieldLevel) bool {
