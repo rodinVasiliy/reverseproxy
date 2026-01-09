@@ -15,7 +15,7 @@ type SSLConfigurationDTO struct {
 
 func ToSSLConfigDTO(ssl ssl.SSLConfiguration) *SSLConfigurationDTO {
 	return &SSLConfigurationDTO{
-		ID:           ssl.ID.String(),
+		ID:           ssl.ID.Hex(),
 		Name:         ssl.Name,
 		CertFileName: ssl.CertFileName,
 		KeyFileName:  ssl.KeyFileName,

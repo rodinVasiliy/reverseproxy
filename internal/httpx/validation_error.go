@@ -21,7 +21,7 @@ func validationMessage(field, tag string) string {
 	case "host":
 		return "invalid hostname value "
 	case "upstream":
-		return "upstream must contain only [0-9] and '.'"
+		return "upstream must contain host and port e.x. divided by ':'"
 	default:
 		return "invalid value"
 	}
