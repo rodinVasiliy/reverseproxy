@@ -3,6 +3,7 @@ package dto
 import (
 	"fmt"
 	webapp "reverseproxy/internal/domain/webapp"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -49,5 +50,9 @@ func DTOToWebApp(dto WebAppDTO) (*webapp.WebApp, error) {
 }
 
 func (dto WebAppDTO) String() string {
-	return fmt.Sprintf("name:%s; port:%v; upstream:%s; policyId:%s; sslId:%s, hosts count:%v", dto.Name, dto.Port, dto.Upstream, dto.PolicyId, dto.SSLId, len(dto.Hosts))
+	var builder strings.Builder
+	for _, host := range dto.Hosts {
+		builder.WriteString(host + " ")
+	}
+	return fmt.Sprintf("name:%s; port:%v; upstream:%s; policyId:%s; sslId:%s, hosts %s", dto.Name, dto.Port, dto.Upstream, dto.PolicyId, dto.SSLId, builder.String())
 }
