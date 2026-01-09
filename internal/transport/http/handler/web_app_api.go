@@ -46,11 +46,15 @@ func createWebApp(s *webapp.Service) gin.HandlerFunc {
 			httpx.BadRequest(c, "invalid json")
 			return
 		}
+		log.Printf("Create web app request: %s\n", webAppDTO.String())
 
 		if err := dto.Validate.Struct(&webAppDTO); err != nil {
 			var ve validator.ValidationErrors
 			if errors.As(err, &ve) {
-				log.Println("validation error")
+				log.Println("Validation error!!!")
+				for _, fe := range ve {
+					log.Printf("validation filed[%s] failed: [%s]", fe.Field(), fe.Tag())
+				}
 				httpx.ValidationError(c, ve)
 				return
 			}

@@ -31,8 +31,8 @@ func validationErrorsToMap(err validator.ValidationErrors) map[string]string {
 	out := make(map[string]string)
 
 	for _, fe := range err {
-		field := fe.Field() // CertFileName
-		tag := fe.Tag()     // certfilename
+		field := fe.Field() // ID | CertFileName
+		tag := fe.Tag()     // required | min | max | certfilename
 
 		out[field] = validationMessage(field, tag)
 	}
