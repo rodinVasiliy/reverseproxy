@@ -8,19 +8,20 @@ import (
 	webappDto "reverseproxy/internal/dto"
 	"reverseproxy/internal/httpx"
 	mongorepository "reverseproxy/internal/infrastructure/mongo"
+	manager "reverseproxy/internal/waf/proxy"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service) {
+func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, manager *manager.Manager) {
 	g := r.Group("/webapps")
 	{
 		g.GET("", getWebApss(s))
-		g.POST("", createWebApp(s))
-		g.PUT("/:id", updateWebApp(s))
-		g.DELETE("/:id", deleteWebApp(s))
+		g.POST("", createWebApp(s, manager))
+		g.PUT("/:id", updateWebApp(s, manager))
+		g.DELETE("/:id", deleteWebApp(s, manager))
 	}
 }
 
@@ -38,7 +39,7 @@ func getWebApss(s *webapp.Service) gin.HandlerFunc {
 	}
 }
 
-func createWebApp(s *webapp.Service) gin.HandlerFunc {
+func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var webAppDTO webappDto.WebAppDTO
 		if err := c.ShouldBindJSON(&webAppDTO); err != nil {
@@ -76,11 +77,17 @@ func createWebApp(s *webapp.Service) gin.HandlerFunc {
 			httpx.InternalError(c)
 		}
 
+		err = manager.SetProxyToManager(webapp)
+		if err != nil {
+			log.Printf("failed to add proxy to manager: %s", err)
+			httpx.InternalError(c)
+		}
+
 		c.JSON(201, gin.H{"id": id.Hex()})
 	}
 }
 
-func updateWebApp(s *webapp.Service) gin.HandlerFunc {
+func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -107,11 +114,17 @@ func updateWebApp(s *webapp.Service) gin.HandlerFunc {
 			return
 		}
 
+		err = manager.SetProxyToManager(webapp)
+		if err != nil {
+			log.Printf("failed to add proxy to manager: %s", err)
+			httpx.InternalError(c)
+		}
+
 		c.Status(204)
 	}
 }
 
-func deleteWebApp(s *webapp.Service) gin.HandlerFunc {
+func deleteWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -132,6 +145,9 @@ func deleteWebApp(s *webapp.Service) gin.HandlerFunc {
 			httpx.InternalError(c)
 			return
 		}
+
+		manager.DeleteProxyFromManager(webapp)
+
 		c.Status(204)
 	}
 }

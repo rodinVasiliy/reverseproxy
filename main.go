@@ -141,6 +141,15 @@ func main() {
 	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webAppService := webapp.NewService(webappRepository, sslService, policyService)
 
+	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
+	manager, err := manager.NewManager(webAppService)
+	if err != nil {
+		fmt.Printf("failed to load waf config %s", err)
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		return
+	}
+	fmt.Println("Waf Config successfully loaded")
+
 	// API у нас будет слушать 9000 порт, запросы на API будут приходить с nginx
 	if role == "master" {
 		adminRouter := gin.Default()
@@ -149,7 +158,7 @@ func main() {
 		handler.RegisterActionRoutes(api, actionService)
 		handler.RegisterPolicyRoutes(api, policyService)
 		handler.RegisterSSLRoutes(api, sslService)
-		handler.RegisterWebAppRoutes(api, webAppService)
+		handler.RegisterWebAppRoutes(api, webAppService, manager)
 
 		go func() {
 			if err := adminRouter.Run(":9000"); err != nil {
@@ -177,15 +186,6 @@ func main() {
 	} else {
 		fmt.Println("Init db not required")
 	}
-
-	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
-	manager, err := manager.NewManager(webAppService)
-	if err != nil {
-		fmt.Printf("failed to load waf config %s", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig)
-		return
-	}
-	fmt.Println("Waf Config successfully loaded")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)

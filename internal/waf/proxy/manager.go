@@ -1,4 +1,4 @@
-package wafconfig
+package proxy
 
 import (
 	"context"
@@ -42,4 +42,17 @@ func newProxyForUpstream(upstream string) (*httputil.ReverseProxy, error) {
 
 func (manager *Manager) GetProxyForWebApp(webApp *webApp.WebApp) *httputil.ReverseProxy {
 	return manager.proxies[webApp.ID]
+}
+
+func (manager *Manager) SetProxyToManager(webapp *webApp.WebApp) error {
+	proxy, err := newProxyForUpstream(webapp.Upstream)
+	if err != nil {
+		return err
+	}
+	manager.proxies[webapp.ID] = proxy
+	return nil
+}
+
+func (manager *Manager) DeleteProxyFromManager(webapp *webApp.WebApp) {
+	manager.proxies[webapp.ID] = nil
 }
