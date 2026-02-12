@@ -10,6 +10,7 @@ import (
 type NodeConfig struct {
 	Port     int    `yaml:"port"`
 	AdminURL string `yaml:"admin_url"`
+	BLURL    string `yaml:"bl_url"`
 }
 
 func GetNodeConfig() (*NodeConfig, error) {
