@@ -1,3 +1,3 @@
 mongo:
-  uri: "mongodb://admin:secret@localhost:27017"
+  uri: "mongodb://admin:secret@10.0.20.2:27017,10.0.20.3:27017/?replicaSet=rs0"
   database: "mydb"

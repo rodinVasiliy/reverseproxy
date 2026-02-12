@@ -23,10 +23,10 @@ import (
 	action "reverseproxy/internal/waf/action"
 	check_request "reverseproxy/internal/waf/check_request"
 
+	node "reverseproxy/internal/infrastructure/config/node"
 	initialization "reverseproxy/internal/initialization"
 	utils "reverseproxy/internal/utils"
 	manager "reverseproxy/internal/waf/proxy"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -34,30 +34,25 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// порт прокси(waf), куда nginx будет отправлять запросы
-func getPort() (int, error) {
-	portStr := os.Getenv("PROXY_PORT")
-	if portStr == "" {
-		return -1, fmt.Errorf("please executing program don't forget enter proxy port")
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return -1, fmt.Errorf("failed to parse proxy port %s %w", portStr, err)
-	}
-	return port, nil
-}
-
-// роль монги(либо мастер либо слейв)
-func getMongoRoleFromEnv() string {
-	role := os.Getenv("MONGO_ROLE")
-	if role == "" {
-		role = "master"
-	}
-	return role
-}
-
 func getInItFlag() bool {
 	return os.Getenv("INIT") == "1"
+}
+
+func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service, webAppService *webapp.Service, manager *manager.Manager) {
+	adminRouter := gin.Default()
+	adminRouter.Use(middleware.CORS())
+	api := adminRouter.Group("/admin/api")
+	handler.RegisterActionRoutes(api, actionService)
+	handler.RegisterPolicyRoutes(api, policyService)
+	handler.RegisterSSLRoutes(api, sslService)
+	handler.RegisterWebAppRoutes(api, webAppService, manager)
+
+	// to do ip брать из конфигурационного файла
+	go func() {
+		if err := adminRouter.Run(url); err != nil {
+			log.Printf("admin api stopped: %v", err)
+		}
+	}()
 }
 
 // TO DO разобраться с логами
@@ -67,12 +62,13 @@ func main() {
 	// log - для ошибок при работе с базой и прочим
 	fmt.Println("reverse proxy ...")
 
-	// порт который использует прокси сервер, мы будем передавать его в заголовок, просто для инфо
-	port, err := getPort()
+	nodeConfig, err := node.GetNodeConfig()
 	if err != nil {
-		fmt.Printf("failed to get proxy port %s", err)
+		fmt.Printf("failed to read waf node configuration %s", err)
 		return
 	}
+	// порт прокси(waf), куда nginx будет отправлять запросы
+	port := nodeConfig.Port
 
 	errorLogFileName := filepath.Join("log", fmt.Sprintf("error_%d.log", port))
 	accessLogFileName := filepath.Join("log", fmt.Sprintf("access_%d.log", port))
@@ -113,8 +109,7 @@ func main() {
 
 	fmt.Println("Getting mongo db dependencies ...")
 	// подключаемся к монгодб
-	role := getMongoRoleFromEnv()
-	mongoDeps, err := config.NewMongoDeps(role)
+	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -150,22 +145,8 @@ func main() {
 	}
 	fmt.Println("Waf Config successfully loaded")
 
-	// API у нас будет слушать 9000 порт, запросы на API будут приходить с nginx
-	if role == "master" {
-		adminRouter := gin.Default()
-		adminRouter.Use(middleware.CORS())
-		api := adminRouter.Group("/admin/api")
-		handler.RegisterActionRoutes(api, actionService)
-		handler.RegisterPolicyRoutes(api, policyService)
-		handler.RegisterSSLRoutes(api, sslService)
-		handler.RegisterWebAppRoutes(api, webAppService, manager)
-
-		go func() {
-			if err := adminRouter.Run(":9000"); err != nil {
-				log.Printf("admin api stopped: %v", err)
-			}
-		}()
-	}
+	fmt.Println("starting admin api")
+	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webAppService, manager)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")

@@ -3,10 +3,12 @@ package handler
 import (
 	"errors"
 	"log"
+	"os"
 	ssl "reverseproxy/internal/domain/ssl"
 	dto "reverseproxy/internal/dto"
 	httpx "reverseproxy/internal/httpx"
 	mongorep "reverseproxy/internal/infrastructure/mongo"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -20,6 +22,7 @@ func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service) {
 		g.POST("", createSSLConfig(s))
 		g.DELETE("/:id", deleteSSLConfig(s))
 		g.PUT("/:id", updateSSLConfig(s))
+		g.GET("/files", listSSLFiles())
 	}
 }
 
@@ -143,5 +146,42 @@ func updateSSLConfig(s *ssl.Service) gin.HandlerFunc {
 		}
 
 		c.Status(204)
+	}
+}
+
+func listSSLFiles() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		// файлы с сертами и ключами у нас находятся тут
+		files, err := os.ReadDir("/etc/nginx/ssl")
+		if err != nil {
+			log.Printf("failed to read ssl directory")
+			httpx.InternalError(ctx)
+			return
+		}
+
+		certs := []string{}
+		keys := []string{}
+
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+
+			name := f.Name()
+
+			// TO DO сравнить с валидацией
+			if strings.HasSuffix(name, ".pem") || strings.HasSuffix(name, ".cer") || strings.HasSuffix(name, ".crt") {
+				certs = append(certs, name)
+			}
+
+			if strings.HasSuffix(name, ".key") || strings.HasSuffix(name, ".pem") {
+				keys = append(keys, name)
+			}
+		}
+
+		ctx.JSON(200, gin.H{
+			"certs": certs,
+			"keys":  keys,
+		})
 	}
 }

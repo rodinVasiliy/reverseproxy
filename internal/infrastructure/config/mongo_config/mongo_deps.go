@@ -26,11 +26,9 @@ func (m *MongoDeps) Ctx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), timeout)
 }
 
-func NewMongoDeps(role string) (*MongoDeps, error) {
+func NewMongoDeps() (*MongoDeps, error) {
 	mongoConfigFilePath := filepath.Join("internal", "infrastructure", "config", "mongo_config", "config.yaml")
 	mongoConfig, err := LoadConfig(mongoConfigFilePath)
-
-	mongoConfig.Role = role
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to load mongo config %w", err)
@@ -50,18 +48,16 @@ func getMongoClient(timeout time.Duration, mongoConfig *MongoConfig) (*mongo.Cli
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	clientOpts := options.Client().ApplyURI(mongoConfig.URI)
-
-	switch mongoConfig.Role {
-	case "master":
-		clientOpts.SetReadPreference(readpref.Primary())
-	case "replica":
-		clientOpts.SetReadPreference(readpref.SecondaryPreferred())
-	}
+	clientOpts := options.Client().ApplyURI(mongoConfig.URI).SetServerSelectionTimeout(5 * time.Second)
 
 	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed connect to mongo %w", err)
+	}
+
+	// ping чтобы убедиться, что PRIMARY найден
+	if err := client.Ping(ctx, readpref.Primary()); err != nil {
+		return nil, fmt.Errorf("mongo ping failed: %w", err)
 	}
 
 	return client, nil

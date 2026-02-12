@@ -9,7 +9,6 @@ import (
 type MongoConfig struct {
 	URI      string `yaml:"uri" json:"uri"`
 	Database string `yaml:"database" json:"database"`
-	Role     string
 }
 
 func LoadConfig(path string) (*MongoConfig, error) {
