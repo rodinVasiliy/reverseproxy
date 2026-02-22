@@ -1,0 +1,8 @@
+redis:
+  masterName: mymaster
+  password: ""
+  db: 0
+  sentinelAddrs:
+    - 10.0.10.1:26379
+    - 10.0.10.2:26379
+    - 10.0.10.3:26379

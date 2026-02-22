@@ -90,8 +90,7 @@ func main() {
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
-	blAddr := nodeConfig.BLURL
-	blackList, err = bl.NewRedisBL(blAddr, "", 0)
+	blackList, err = bl.NewRedisBL()
 	if err != nil {
 		fmt.Printf("failed to in it bl %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)

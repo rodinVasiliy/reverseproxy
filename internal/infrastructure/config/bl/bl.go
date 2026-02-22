@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -18,8 +19,28 @@ type RedisBL struct {
 	prefix string
 }
 
-func NewRedisBL(addr, passwd string, db int) (*RedisBL, error) {
-	rdb := redis.NewClient(&redis.Options{Addr: addr, Password: passwd, DB: db})
+func NewRedisBL() (*RedisBL, error) {
+	cfg, err := LoadConfig("redis.yml")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cfg.Redis.SentinelAddrs) == 0 {
+		return nil, fmt.Errorf("no sentinel addresses provided")
+	}
+
+	rdb := redis.NewFailoverClient(&redis.FailoverOptions{
+		MasterName:      cfg.Redis.MasterName,
+		SentinelAddrs:   cfg.Redis.SentinelAddrs,
+		Password:        cfg.Redis.Password,
+		DB:              cfg.Redis.DB,
+		DialTimeout:     3 * time.Second,
+		ReadTimeout:     2 * time.Second,
+		WriteTimeout:    2 * time.Second,
+		MaxRetries:      3,
+		MinRetryBackoff: 100 * time.Millisecond,
+		MaxRetryBackoff: 2 * time.Second,
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -30,7 +51,6 @@ func NewRedisBL(addr, passwd string, db int) (*RedisBL, error) {
 
 	return &RedisBL{
 		client: rdb,
-		prefix: "bl:ip:",
 	}, nil
 }
 
