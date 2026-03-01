@@ -76,14 +76,14 @@ func main() {
 	// тут идет настройка лог файла, в котором будут отображаться ошибки
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s :%s", errorLogFileName, err)
+		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
 		return
 	}
 	// пока что все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s :%s", accessLogFileName, err)
+		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
 		closeAll(nil, errorLogConfig, nil)
 		return
 	}
@@ -92,7 +92,7 @@ func main() {
 	var blackList *bl.RedisBL
 	blackList, err = bl.NewRedisBL()
 	if err != nil {
-		fmt.Printf("failed to in it bl %s", err)
+		fmt.Printf("failed to in it bl %s\n", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
@@ -101,7 +101,7 @@ func main() {
 	fmt.Println("loading geo base from file ...")
 	err = geo.InitGeo()
 	if err != nil {
-		fmt.Printf("failed to in it geo base %s", err)
+		fmt.Printf("failed to in it geo base %s\n", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
@@ -110,7 +110,7 @@ func main() {
 	// подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
-		fmt.Printf("failed to get mongo deps %s", err)
+		fmt.Printf("failed to get mongo deps %s\n", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
 		return
 	}
