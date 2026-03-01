@@ -20,7 +20,7 @@ type RedisBL struct {
 }
 
 func NewRedisBL() (*RedisBL, error) {
-	cfg, err := LoadConfig("redis.yml")
+	cfg, err := LoadConfig("internal/infrastructure/config/bl/redis.yml")
 	if err != nil {
 		return nil, err
 	}
