@@ -15,22 +15,28 @@ func GetIpFromRequest(r *http.Request) net.IP {
 	return net.ParseIP(xrip)
 }
 
-func DropAllCollections(deps *config.MongoDeps) error {
+func ClearAllCollections(deps *config.MongoDeps) error {
+
 	ctx, cancel := deps.Ctx()
 	defer cancel()
 
 	db := deps.Client.Database(deps.Config.Database)
 
-	coll, err := db.ListCollectionNames(ctx, bson.D{})
+	collNames, err := db.ListCollectionNames(ctx, bson.D{})
 	if err != nil {
 		return err
 	}
 
-	for _, c := range coll {
-		if err := db.Collection(c).Drop(ctx); err != nil {
-			return fmt.Errorf("failed to drop %s collection %w", c, err)
+	for _, name := range collNames {
+
+		collection := db.Collection(name)
+
+		_, err := collection.DeleteMany(ctx, bson.D{})
+		if err != nil {
+			return fmt.Errorf("failed to clear %s collection: %w", name, err)
 		}
 	}
+
 	return nil
 }
 

@@ -81,7 +81,6 @@ func main() {
 	}
 	// пока что все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
-	log.Println("test message") // TO DO удалить если норм
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
@@ -152,7 +151,7 @@ func main() {
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
-		utils.DropAllCollections(mongoDeps)
+		utils.ClearAllCollections(mongoDeps)
 		utils.DropOldWebappFiles()
 		go webAppService.WatchChanges()
 		err = initialization.InItDB(policyService, actionService, ruleService)
