@@ -70,8 +70,8 @@ func main() {
 	// порт прокси(waf), куда nginx будет отправлять запросы
 	port := nodeConfig.Port
 
-	errorLogFileName := filepath.Join("log", fmt.Sprintf("error_%d.log", port))
-	accessLogFileName := filepath.Join("log", fmt.Sprintf("access_%d.log", port))
+	errorLogFileName := filepath.Join("log", "error.log")
+	accessLogFileName := filepath.Join("log", "access.log")
 
 	// тут идет настройка лог файла, в котором будут отображаться ошибки
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
