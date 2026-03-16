@@ -113,6 +113,8 @@ func (s *Service) WatchChanges() {
 			continue
 		}
 
+		fmt.Println("operation type: ", event.OperationType)
+
 		switch event.OperationType {
 
 		case "insert":

@@ -81,6 +81,7 @@ func main() {
 	}
 	// пока что все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
+	log.Println("test message") // TO DO удалить если норм
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)

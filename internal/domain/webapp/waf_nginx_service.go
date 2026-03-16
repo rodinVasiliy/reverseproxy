@@ -68,7 +68,7 @@ func reloadNginx() {
 
 	cmd := exec.Command("nginx", "-t")
 	if err := cmd.Run(); err != nil {
-		log.Println("nginx config invalid") // TO DO мб что-то другое?
+		log.Println("nginx config invalid")
 		return
 	}
 
