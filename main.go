@@ -19,7 +19,6 @@ import (
 	config "reverseproxy/internal/infrastructure/config/mongo_config"
 	repository "reverseproxy/internal/infrastructure/mongo"
 	"reverseproxy/internal/transport/http/handler"
-	"reverseproxy/internal/transport/http/middleware"
 	action "reverseproxy/internal/waf/action"
 	check_request "reverseproxy/internal/waf/check_request"
 
@@ -30,6 +29,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -40,7 +40,11 @@ func getInItFlag() bool {
 
 func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service, webAppService *webapp.Service, manager *manager.Manager) {
 	adminRouter := gin.Default()
-	adminRouter.Use(middleware.CORS())
+	adminRouter.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+	}))
 	api := adminRouter.Group("/admin/api")
 	handler.RegisterActionRoutes(api, actionService)
 	handler.RegisterPolicyRoutes(api, policyService)
