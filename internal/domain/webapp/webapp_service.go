@@ -3,6 +3,7 @@ package webapp
 import (
 	"context"
 	"fmt"
+	"log"
 	"reverseproxy/internal/domain/policy"
 	ssl "reverseproxy/internal/domain/ssl"
 	repository "reverseproxy/internal/infrastructure/mongo"
@@ -10,6 +11,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Service struct {
@@ -58,34 +61,20 @@ func (s *Service) List(ctx context.Context) ([]webapp.WebAppResponse, error) {
 }
 
 func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, error) {
-	// находим ssl конфигурацию чтобы по ней создать nginx файлы
-	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
-	if err != nil {
-		return primitive.NilObjectID, fmt.Errorf("failed to find ssl for web app %w", err)
-	}
 	id, err := s.repository.Insert(ctx, app)
 	// TODO а если не primitive
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
 	app.ID = id
-	nginxConfig := generateNginxConfig(app, ssl.CertFileName, ssl.KeyFileName)
-	createNginxFiles(app, nginxConfig)
 	return id, nil
 }
 
 func (s *Service) Delete(ctx context.Context, app *WebApp) error {
-	deleteNginxFiles(*app)
 	return s.repository.Delete(ctx, app)
 }
 
 func (s *Service) Edit(ctx context.Context, app *WebApp) error {
-	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
-	if err != nil {
-		return fmt.Errorf("failed to find ssl for web app %w", err)
-	}
-	nginxConfig := generateNginxConfig(*app, ssl.CertFileName, ssl.KeyFileName)
-	editNginxFiles(*app, nginxConfig)
 	return s.repository.Update(ctx, app)
 }
 
@@ -95,4 +84,77 @@ func (s *Service) GetWebAppForHost(ctx context.Context, host string) (*WebApp, e
 
 func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*WebApp, error) {
 	return s.repository.FindById(ctx, id)
+}
+
+func (s *Service) WatchChanges() {
+	ctx := context.Background()
+	opts := options.ChangeStream().SetFullDocument(options.UpdateLookup)
+	collection := s.repository.Collection()
+
+	stream, err := collection.Watch(ctx, mongo.Pipeline{}, opts)
+	if err != nil {
+		log.Println(err)
+	}
+
+	defer stream.Close(ctx)
+
+	for stream.Next(ctx) {
+		var event struct {
+			OperationType string `bson:"operationType"`
+			FullDocument  WebApp `bson:"fullDocument"`
+			DocumentKey   struct {
+				ID primitive.ObjectID `bson:"_id"`
+			} `bson:"documentKey"`
+		}
+
+		if err := stream.Decode(&event); err != nil {
+			log.Println(err)
+			continue
+		}
+
+		switch event.OperationType {
+
+		case "insert":
+			s.create(event.FullDocument, ctx)
+
+		case "update":
+			s.update(event.FullDocument, ctx)
+
+		case "delete":
+			s.remove(event.DocumentKey.ID, ctx)
+		}
+
+	}
+	if err := stream.Err(); err != nil {
+		log.Println("watch stream error:", err)
+	}
+}
+
+func (s *Service) create(app WebApp, ctx context.Context) {
+	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	config := generateNginxConfig(app, ssl.CertFileName, ssl.KeyFileName)
+	createNginxFiles(app, config)
+}
+
+func (s *Service) remove(id primitive.ObjectID, ctx context.Context) {
+	app, err := s.FindById(ctx, id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	deleteNginxFiles(*app)
+}
+
+func (s *Service) update(app WebApp, ctx context.Context) {
+	ssl, err := s.sslService.FindByID(ctx, app.SSLId)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	nginxConfig := generateNginxConfig(app, ssl.CertFileName, ssl.KeyFileName)
+	editNginxFiles(app, nginxConfig)
 }

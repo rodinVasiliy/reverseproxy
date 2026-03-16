@@ -134,6 +134,8 @@ func main() {
 
 	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webAppService := webapp.NewService(webappRepository, sslService, policyService)
+	go webAppService.WatchChanges() // запускаем отсмотр изменений
+	// если что-то поменяется в webapp, каждая нода будет отлавливать эти изменения и создавать/удалять у себя файлы
 
 	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
 	manager, err := manager.NewManager(webAppService)

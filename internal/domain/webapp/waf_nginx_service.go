@@ -2,6 +2,7 @@ package webapp
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,7 +45,7 @@ func createNginxFiles(app WebApp, config string) {
 	enabled := fmt.Sprintf("/etc/nginx/sites-enabled/webapp-%s.conf", app.ID.Hex())
 	os.Symlink(available, enabled) // ссылка на файл
 
-	exec.Command("systemctl", "reload", "nginx").Run()
+	reloadNginx()
 }
 
 func deleteNginxFiles(app WebApp) {
@@ -53,11 +54,22 @@ func deleteNginxFiles(app WebApp) {
 
 	os.Remove(enabled)
 	os.Remove(available)
-	exec.Command("systemctl", "reload", "nginx").Run()
+	reloadNginx()
 }
 
 func editNginxFiles(app WebApp, newConfig string) {
 	fileName := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(fileName, []byte(newConfig), 0644)
+	reloadNginx()
+}
+
+func reloadNginx() {
+
+	cmd := exec.Command("nginx", "-t")
+	if err := cmd.Run(); err != nil {
+		log.Println("nginx config invalid") // TO DO мб что-то другое?
+		return
+	}
+
 	exec.Command("systemctl", "reload", "nginx").Run()
 }
