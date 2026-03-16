@@ -154,6 +154,7 @@ func main() {
 		fmt.Println("Initialization database ...")
 		utils.DropAllCollections(mongoDeps)
 		utils.DropOldWebappFiles()
+		go webAppService.WatchChanges()
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
