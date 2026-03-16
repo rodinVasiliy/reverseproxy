@@ -99,6 +99,7 @@ func (s *Service) WatchChanges() {
 	defer stream.Close(ctx)
 
 	for stream.Next(ctx) {
+		fmt.Println("change detected")
 		var event struct {
 			OperationType string `bson:"operationType"`
 			FullDocument  WebApp `bson:"fullDocument"`

@@ -39,6 +39,7 @@ server {
 }
 
 func createNginxFiles(app WebApp, config string) {
+	fmt.Println("creating nginx config for", app.ID.Hex())
 	available := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(available, []byte(config), 0644)
 
