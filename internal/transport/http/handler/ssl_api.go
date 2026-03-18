@@ -86,14 +86,17 @@ func createSSLConfig(s *ssl.Service) gin.HandlerFunc {
 		if err := dto.Validate.Struct(sslDTO); err != nil {
 			var ve validator.ValidationErrors
 			if errors.As(err, &ve) {
+				log.Println("validation error: ", err)
 				httpx.ValidationError(c, ve)
 			}
+			log.Println("invalid request: ", err)
 			httpx.BadRequest(c, "invalid request")
 			return
 		}
 
 		ssl, err := dto.DTOToSSLConfig(sslDTO)
 		if err != nil {
+			log.Println("failed to convert DTO to SSL Config: ", err)
 			httpx.BadRequest(c, err.Error())
 			return
 		}
