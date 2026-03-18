@@ -78,6 +78,7 @@ func createSSLConfig(s *ssl.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var sslDTO dto.SSLConfigurationDTO
 		if err := c.ShouldBindJSON(&sslDTO); err != nil {
+			log.Println("invalid json body: ", err)
 			httpx.BadRequest(c, "invalid json body")
 			return
 		}
