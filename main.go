@@ -83,7 +83,7 @@ func main() {
 		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
 		return
 	}
-	// пока что все ошибки будут логироваться в error log
+	// все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {

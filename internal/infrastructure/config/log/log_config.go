@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -25,8 +24,6 @@ func NewLogConfig(logFileName string) (*LogConfig, error) {
 		return nil, err
 	}
 
-	// Настраиваем логгер на запись в файл
-	log.SetOutput(logFile)
 	return &LogConfig{file: logFile, path: logFileName}, err
 }
 
