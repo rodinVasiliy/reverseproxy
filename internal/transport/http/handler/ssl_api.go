@@ -23,6 +23,7 @@ func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service) {
 		g.DELETE("/:id", deleteSSLConfig(s))
 		g.PUT("/:id", updateSSLConfig(s))
 		g.GET("/files", listSSLFiles())
+		g.GET("/:id", getSSLConfigByID(s))
 	}
 }
 
@@ -37,10 +38,28 @@ func getSSLConfigs(s *ssl.Service) gin.HandlerFunc {
 
 		dtos := make([]dto.SSLConfigurationDTO, 0, len(sslConfigs))
 		for _, sslConfig := range sslConfigs {
-			dto := dto.ToSSLConfigDTO(sslConfig)
-			dtos = append(dtos, *dto)
+			sslConfigDTO := dto.ToSSLConfigDTO(sslConfig)
+			dtos = append(dtos, *sslConfigDTO)
 		}
 		c.JSON(200, dtos)
+	}
+}
+
+func getSSLConfigByID(s *ssl.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := primitive.ObjectIDFromHex(c.Param("id"))
+		if err != nil {
+			log.Printf("failed to parse id: %v", err)
+			httpx.BadRequest(c, "invalid id")
+			return
+		}
+		sslConfig, err := s.FindByID(c.Request.Context(), id)
+		if err != nil {
+			log.Printf("failed to find ssl config by id: %v", err)
+			httpx.InternalError(c)
+		}
+		sslConfigDTO := dto.ToSSLConfigDTO(*sslConfig)
+		c.JSON(200, sslConfigDTO)
 	}
 }
 
@@ -52,7 +71,7 @@ func deleteSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		ssl, err := s.FindByID(c.Request.Context(), id)
+		sslConfiguration, err := s.FindByID(c.Request.Context(), id)
 		if err != nil {
 			if errors.Is(err, mongorep.ErrNotFound) {
 				httpx.NotFound(c, "ssl_config")
@@ -63,7 +82,7 @@ func deleteSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		err = s.Delete(c.Request.Context(), ssl)
+		err = s.Delete(c.Request.Context(), sslConfiguration)
 		if err != nil {
 			log.Printf("failed to delete ssl config: %v", err)
 			httpx.InternalError(c)
@@ -94,14 +113,14 @@ func createSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		ssl, err := dto.DTOToSSLConfig(sslDTO)
+		sslConfig, err := dto.DTOToSSLConfig(sslDTO)
 		if err != nil {
 			log.Println("failed to convert DTO to SSL Config: ", err)
 			httpx.BadRequest(c, err.Error())
 			return
 		}
 
-		_, err = s.Insert(c.Request.Context(), *ssl)
+		_, err = s.Insert(c.Request.Context(), *sslConfig)
 		if err != nil {
 			log.Printf("failed to insert ssl config: %v", err)
 			httpx.InternalError(c)
@@ -135,13 +154,13 @@ func updateSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		ssl, err := dto.DTOToSSLConfig(sslDTO)
+		sslConfig, err := dto.DTOToSSLConfig(sslDTO)
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
 			return
 		}
-		ssl.ID = id
-		err = s.Update(c.Request.Context(), ssl)
+		sslConfig.ID = id
+		err = s.Update(c.Request.Context(), sslConfig)
 		if err != nil {
 			log.Printf("failed to update ssl config: %v", err)
 			// TODO мб добавить сюда отлов ErrNotFound + в Update засунуть в описание метода то, что может вернуть эту ошибку
