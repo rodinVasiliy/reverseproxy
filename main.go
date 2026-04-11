@@ -48,7 +48,7 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	api := adminRouter.Group("/admin/api")
 	handler.RegisterActionRoutes(api, actionService)
 	handler.RegisterPolicyRoutes(api, policyService)
-	handler.RegisterSSLRoutes(api, sslService)
+	handler.RegisterSSLRoutes(api, sslService, webAppService)
 	handler.RegisterWebAppRoutes(api, webAppService, manager)
 
 	// to do ip брать из конфигурационного файла
@@ -120,23 +120,23 @@ func main() {
 	}
 
 	fmt.Println("Config Initialization started...")
-	actionRepository := repository.NewMongoRepositoy[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
+	actionRepository := repository.NewMongoRepository[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
 	actionService := actionDoc.NewService(actionRepository)
 
 	// сами actions, зашитые в код
 	actionRegistry := action.NewActionRegistry(accessLogger, blackList)
 	actionExecutor := action.NewExecutor(actionRegistry)
 
-	ruleRepository := repository.NewMongoRepositoy[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
+	ruleRepository := repository.NewMongoRepository[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
 	ruleService := rule.NewService(ruleRepository)
 
-	policyRepository := repository.NewMongoRepositoy[policy.Policy](mongoDeps.Client, repository.DB_NAME, repository.POLICY_COLLECTION)
+	policyRepository := repository.NewMongoRepository[policy.Policy](mongoDeps.Client, repository.DB_NAME, repository.POLICY_COLLECTION)
 	policyService := policy.NewService(policyRepository)
 
-	sslRepository := repository.NewMongoRepositoy[ssl.SSLConfiguration](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
+	sslRepository := repository.NewMongoRepository[ssl.SSLConfiguration](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
 	sslService := ssl.NewService(sslRepository)
 
-	webappRepository := repository.NewMongoRepositoy[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
+	webappRepository := repository.NewMongoRepository[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webAppService := webapp.NewService(webappRepository, sslService, policyService)
 	go webAppService.WatchChanges() // запускаем отсмотр изменений
 	// если что-то поменяется в webapp, каждая нода будет отлавливать эти изменения и создавать/удалять у себя файлы

@@ -3,10 +3,12 @@ package handler
 import (
 	"errors"
 	"log"
+	"net/http"
 	"os"
-	ssl "reverseproxy/internal/domain/ssl"
-	dto "reverseproxy/internal/dto"
-	httpx "reverseproxy/internal/httpx"
+	"reverseproxy/internal/domain/ssl"
+	"reverseproxy/internal/domain/webapp"
+	"reverseproxy/internal/dto"
+	"reverseproxy/internal/httpx"
 	mongorep "reverseproxy/internal/infrastructure/mongo"
 	"strings"
 
@@ -15,12 +17,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service) {
+func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service, w *webapp.Service) {
 	g := r.Group("/ssls")
 	{
 		g.GET("", getSSLConfigs(s))
 		g.POST("", createSSLConfig(s))
-		g.DELETE("/:id", deleteSSLConfig(s))
+		g.DELETE("/:id", deleteSSLConfig(s, w))
 		g.PUT("/:id", updateSSLConfig(s))
 		g.GET("/files", listSSLFiles())
 		g.GET("/:id", getSSLConfigByID(s))
@@ -63,7 +65,7 @@ func getSSLConfigByID(s *ssl.Service) gin.HandlerFunc {
 	}
 }
 
-func deleteSSLConfig(s *ssl.Service) gin.HandlerFunc {
+func deleteSSLConfig(s *ssl.Service, w *webapp.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -82,6 +84,23 @@ func deleteSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
+		webapps, err := w.FindBySSLId(id, c.Request.Context())
+		if err != nil {
+			log.Printf("failed to find webapps by id: %v, %v", id.Hex(), err)
+			httpx.InternalError(c)
+		}
+		if len(webapps) > 0 {
+			names := make([]string, 0, len(webapps))
+			for _, wa := range webapps {
+				names = append(names, wa.Name)
+			}
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "ssl_in_use",
+				"message": "SSL config is used",
+				"webapps": names,
+			})
+			return
+		}
 		err = s.Delete(c.Request.Context(), sslConfiguration)
 		if err != nil {
 			log.Printf("failed to delete ssl config: %v", err)

@@ -161,3 +161,15 @@ func (s *Service) update(app WebApp, ctx context.Context) {
 	nginxConfig := generateNginxConfig(app, ssl.CertFileName, ssl.KeyFileName)
 	editNginxFiles(app, nginxConfig)
 }
+
+func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]WebApp, error) {
+	filter := bson.M{"SSLId": id}
+	webapps, err := s.repository.FindMany(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	if len(webapps) == 0 {
+		return nil, nil
+	}
+	return webapps, nil
+}

@@ -18,7 +18,7 @@ type MongoRepository[T any] struct {
 	collectionName string
 }
 
-func NewMongoRepositoy[T any](client *mongo.Client, dbName, collectionName string) *MongoRepository[T] {
+func NewMongoRepository[T any](client *mongo.Client, dbName, collectionName string) *MongoRepository[T] {
 	return &MongoRepository[T]{
 		client:         client,
 		dbName:         dbName,
@@ -32,9 +32,9 @@ func (r *MongoRepository[T]) Collection() *mongo.Collection {
 
 // FindOne возвращает ссылку на документ по фильтру filter
 //
-// Возвращает :
+// Возвращает:
 //   - ErrNotFound если документа не существует
-//   - любую другую ошибку при ошибки с базой данных
+//   - любую другую ошибку при ошибке с базой данных
 func (r *MongoRepository[T]) FindOne(ctx context.Context, filter any) (*T, error) {
 	var result T
 	err := r.Collection().FindOne(ctx, filter).Decode(&result)
@@ -47,11 +47,11 @@ func (r *MongoRepository[T]) FindOne(ctx context.Context, filter any) (*T, error
 	return &result, nil
 }
 
-// FindByID возвращает документ по id
+// FindById возвращает документ по id
 //
 // Возвращает:
 //   - ErrNotFound если документа не существует
-//   - любую другую ошибку при ошибки с базой данных
+//   - любую другую ошибку при ошибке с базой данных
 func (r *MongoRepository[T]) FindById(ctx context.Context, id primitive.ObjectID) (*T, error) {
 	return r.FindOne(ctx, bson.M{"_id": id})
 }
@@ -69,7 +69,7 @@ func (r *MongoRepository[T]) FindAll(ctx context.Context) ([]T, error) {
 	return result, nil
 }
 
-// возвращает primitive.ObjectID либо ошибку, если не получилось вставить или id не того типа
+// Insert возвращает primitive.ObjectID либо ошибку, если не получилось вставить или id не того типа
 func (r *MongoRepository[T]) Insert(ctx context.Context, entity T) (primitive.ObjectID, error) {
 	res, err := r.Collection().InsertOne(ctx, entity)
 	if err != nil {
