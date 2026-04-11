@@ -72,6 +72,7 @@ func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 
 		if err := dto.Validate.Struct(&webAppDTO); err != nil {
 			handleValidationError(err, c)
+			return
 		}
 
 		wa, err := webappDto.DTOToWebApp(webAppDTO)
@@ -113,6 +114,7 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 
 		if err := dto.Validate.Struct(&waDTO); err != nil {
 			handleValidationError(err, c)
+			return
 		}
 
 		wa, err := webappDto.DTOToWebApp(waDTO)
