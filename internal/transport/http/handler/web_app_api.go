@@ -71,34 +71,23 @@ func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 		log.Printf("Create web app request: %s\n", webAppDTO.String())
 
 		if err := dto.Validate.Struct(&webAppDTO); err != nil {
-			var ve validator.ValidationErrors
-			if errors.As(err, &ve) {
-				log.Println("Validation error!!!")
-				for _, fe := range ve {
-					log.Printf("validation filed[%s] failed: [%s]", fe.Field(), fe.Tag())
-				}
-				httpx.ValidationError(c, ve)
-				return
-			}
-			log.Println("invalid request")
-			httpx.BadRequest(c, "invalid request")
-			return
+			handleValidationError(err, c)
 		}
 
-		webapp, err := webappDto.DTOToWebApp(webAppDTO)
+		wa, err := webappDto.DTOToWebApp(webAppDTO)
 		if err != nil {
 			log.Printf("failed to convert dto to webapp")
 			httpx.BadRequest(c, err.Error())
 			return
 		}
 
-		id, err := s.Insert(c.Request.Context(), *webapp)
+		id, err := s.Insert(c.Request.Context(), *wa)
 		if err != nil {
 			log.Printf("failed to insert web app to db: %v", err)
 			httpx.InternalError(c)
 		}
 
-		err = manager.SetProxyToManager(webapp)
+		err = manager.SetProxyToManager(wa)
 		if err != nil {
 			log.Printf("failed to add proxy to manager: %s", err)
 			httpx.InternalError(c)
@@ -123,34 +112,23 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 		}
 
 		if err := dto.Validate.Struct(&waDTO); err != nil {
-			var ve validator.ValidationErrors
-			if errors.As(err, &ve) {
-				log.Println("Validation error!!!")
-				for _, fe := range ve {
-					log.Printf("validation filed[%s] failed: [%s]", fe.Field(), fe.Tag())
-				}
-				httpx.ValidationError(c, ve)
-				return
-			}
-			log.Println("invalid request")
-			httpx.BadRequest(c, "invalid request")
-			return
+			handleValidationError(err, c)
 		}
 
-		webapp, err := webappDto.DTOToWebApp(waDTO)
-		webapp.ID = id
+		wa, err := webappDto.DTOToWebApp(waDTO)
+		wa.ID = id
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
 			return
 		}
 
-		if err := s.Edit(c.Request.Context(), webapp); err != nil {
+		if err := s.Edit(c.Request.Context(), wa); err != nil {
 			log.Printf("failed to edit web app: %v", err)
 			httpx.InternalError(c)
 			return
 		}
 
-		err = manager.SetProxyToManager(webapp)
+		err = manager.SetProxyToManager(wa)
 		if err != nil {
 			log.Printf("failed to add proxy to manager: %s", err)
 			httpx.InternalError(c)
@@ -167,23 +145,38 @@ func deleteWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			httpx.BadRequest(c, "invalid id")
 			return
 		}
-		webapp, err := s.FindById(c.Request.Context(), id)
+		wa, err := s.FindById(c.Request.Context(), id)
 		if err != nil {
 			if errors.Is(err, mongorepository.ErrNotFound) {
-				httpx.NotFound(c, "web app "+webapp.Name)
+				httpx.NotFound(c, "web app "+wa.Name)
 				return
 			}
 			httpx.InternalError(c)
 			return
 		}
-		if err = s.Delete(c.Request.Context(), webapp); err != nil {
-			log.Printf("failed to delete web app %v: %v", webapp.Name, err)
+		if err = s.Delete(c.Request.Context(), wa); err != nil {
+			log.Printf("failed to delete web app %v: %v", wa.Name, err)
 			httpx.InternalError(c)
 			return
 		}
 
-		manager.DeleteProxyFromManager(webapp)
+		manager.DeleteProxyFromManager(wa)
 
 		c.Status(204)
 	}
+}
+
+func handleValidationError(err error, c *gin.Context) {
+	var ve validator.ValidationErrors
+	if errors.As(err, &ve) {
+		log.Println("Validation error!!!")
+		for _, fe := range ve {
+			log.Printf("validation field[%s] failed: [%s]", fe.Field(), fe.Tag())
+		}
+		httpx.ValidationError(c, ve)
+		return
+	}
+	log.Println("invalid request")
+	httpx.BadRequest(c, "invalid request")
+	return
 }
