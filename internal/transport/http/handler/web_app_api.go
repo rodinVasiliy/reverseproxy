@@ -18,15 +18,16 @@ import (
 func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, manager *manager.Manager) {
 	g := r.Group("/webapps")
 	{
-		g.GET("", getWebApss(s))
+		g.GET("", getWebApps(s))
 		g.POST("", createWebApp(s, manager))
 		g.PUT("/:id", updateWebApp(s, manager))
 		g.DELETE("/:id", deleteWebApp(s, manager))
+		g.GET("/:id", getWebApp(s))
 	}
 }
 
-// здесь используется webapp.WebappResponce в качестве выхода
-func getWebApss(s *webapp.Service) gin.HandlerFunc {
+// Здесь используется webapp.WebappResponce в качестве выхода
+func getWebApps(s *webapp.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apps, err := s.List(c.Request.Context())
 		if err != nil {
@@ -37,6 +38,26 @@ func getWebApss(s *webapp.Service) gin.HandlerFunc {
 
 		c.JSON(200, apps)
 	}
+}
+
+func getWebApp(s *webapp.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := primitive.ObjectIDFromHex(c.Param("id"))
+		if err != nil {
+			log.Printf("failed to parse id: %v", err)
+			httpx.BadRequest(c, "invalid id")
+		}
+
+		w, err := s.FindById(c.Request.Context(), id)
+		if err != nil {
+			log.Printf("failed to find web app: %v", err)
+			httpx.InternalError(c)
+		}
+
+		wDto := dto.WebAppToDTO(*w)
+		c.JSON(200, wDto)
+	}
+
 }
 
 func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
