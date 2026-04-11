@@ -91,9 +91,11 @@ func deleteSSLConfig(s *ssl.Service, w *webapp.Service) gin.HandlerFunc {
 		}
 		if len(webapps) > 0 {
 			names := make([]string, 0, len(webapps))
-			for _, wa := range webapps {
-				names = append(names, wa.Name)
+			for _, w := range webapps {
+				names = append(names, w.Name)
 			}
+			log.Printf("ssl %v in use in webapps: %v", sslConfiguration.Name, names)
+
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    "ssl_in_use",
 				"message": "SSL config is used",
