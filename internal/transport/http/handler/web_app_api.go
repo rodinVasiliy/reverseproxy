@@ -116,13 +116,28 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			return
 		}
 
-		var dto webappDto.WebAppDTO
-		if err := c.ShouldBindJSON(&dto); err != nil {
+		var waDTO webappDto.WebAppDTO
+		if err := c.ShouldBindJSON(&waDTO); err != nil {
 			httpx.BadRequest(c, "invalid json body")
 			return
 		}
 
-		webapp, err := webappDto.DTOToWebApp(dto)
+		if err := dto.Validate.Struct(&waDTO); err != nil {
+			var ve validator.ValidationErrors
+			if errors.As(err, &ve) {
+				log.Println("Validation error!!!")
+				for _, fe := range ve {
+					log.Printf("validation filed[%s] failed: [%s]", fe.Field(), fe.Tag())
+				}
+				httpx.ValidationError(c, ve)
+				return
+			}
+			log.Println("invalid request")
+			httpx.BadRequest(c, "invalid request")
+			return
+		}
+
+		webapp, err := webappDto.DTOToWebApp(waDTO)
 		webapp.ID = id
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
