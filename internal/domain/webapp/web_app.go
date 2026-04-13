@@ -4,7 +4,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// тут внимание, Port - то, что слушает nginx, Upstream - ip + port, куда мы будем отправлять запрос, порты могут быть разные
+// Тут внимание, Port - то, что слушает nginx, Upstream - ip + port, куда мы будем отправлять запрос, порты могут быть разные
 type WebApp struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
 	Name     string             `bson:"name"`     // название вебапа

@@ -29,13 +29,13 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 	return s.repository.FindAll(ctx)
 }
 
-func (s *Service) List(ctx context.Context) ([]webapp.WebAppResponse, error) {
+func (s *Service) List(ctx context.Context) ([]webapp.Response, error) {
 	webapps, err := s.repository.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	responses := make([]webapp.WebAppResponse, 0, len(webapps))
+	responses := make([]webapp.Response, 0, len(webapps))
 	for _, w := range webapps {
 		policy, err := s.policyService.FindById(ctx, w.PolicyId)
 		if err != nil {
@@ -45,7 +45,7 @@ func (s *Service) List(ctx context.Context) ([]webapp.WebAppResponse, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to find ssl config for webapp %v: %s", w.Name, err)
 		}
-		responses = append(responses, webapp.WebAppResponse{
+		responses = append(responses, webapp.Response{
 			ID:         w.ID.Hex(),
 			Name:       w.Name,
 			PolicyId:   policy.ID.Hex(),

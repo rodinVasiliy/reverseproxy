@@ -10,10 +10,10 @@ func NewExecutor(registry *Registry) *Executor {
 	return &Executor{registry: registry}
 }
 
-func (e *Executor) ExecuteAll(actionNames []string, ap *ActionParams) bool {
+func (e *Executor) ExecuteAll(actionNames []string, ap *Params) bool {
 	shouldBlock := false
 	for _, name := range actionNames {
-		if name == BLOCK_REQUEST_ACTION_NAME {
+		if name == BlockRequestActionName {
 			shouldBlock = true
 			continue
 		}
@@ -27,8 +27,8 @@ func (e *Executor) ExecuteAll(actionNames []string, ap *ActionParams) bool {
 	return shouldBlock
 }
 
-func (e *Executor) Execute(actionName string, ap *ActionParams) bool {
-	if actionName == BLOCK_REQUEST_ACTION_NAME {
+func (e *Executor) Execute(actionName string, ap *Params) bool {
+	if actionName == BlockRequestActionName {
 		return true
 	}
 	action, ok := e.registry.Get(actionName)

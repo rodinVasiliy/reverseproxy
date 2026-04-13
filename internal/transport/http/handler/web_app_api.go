@@ -173,7 +173,7 @@ func handleValidationError(err error, c *gin.Context) {
 	if errors.As(err, &ve) {
 		log.Println("Validation error!!!")
 		for _, fe := range ve {
-			log.Printf("validation field[%s] failed: [%s]", fe.Field(), fe.Tag())
+			log.Printf("validation field[%s] failed: [%s], value[%v]", fe.Field(), fe.Tag(), fe.Value())
 		}
 		httpx.ValidationError(c, ve)
 		return

@@ -16,13 +16,13 @@ import (
 func getDefaultActions() []actiondoc.ActionDoc {
 	var actionDocs []actiondoc.ActionDoc
 	logToDBActionDoc := actiondoc.ActionDoc{
-		Name: action.LOG_TO_DB_ACTION_NAME,
+		Name: action.LogToDbActionName,
 	}
 	blockRequestActionDoc := actiondoc.ActionDoc{
-		Name: action.BLOCK_REQUEST_ACTION_NAME,
+		Name: action.BlockRequestActionName,
 	}
 	sendToBLActionDoc := actiondoc.ActionDoc{
-		Name: action.SEND_TO_BL_ACTION_NAME,
+		Name: action.SendToBlActionName,
 	}
 	actionDocs = append(actionDocs, logToDBActionDoc)
 	actionDocs = append(actionDocs, blockRequestActionDoc)

@@ -15,7 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// возвращает true, если ip есть в списке подсетей list (может использоваться и WL и BL)
+// Возвращает true, если ip есть в списке подсетей list (может использоваться и WL и BL)
 func checkInList(ip net.IP, list []string) bool {
 	for i := range list {
 		_, net, err := net.ParseCIDR(list[i])
@@ -29,7 +29,7 @@ func checkInList(ip net.IP, list []string) bool {
 	return false
 }
 
-// проверка, нужно ли блокировать запрос, проходимся по всем правилам из политики
+// IsBlock проверяет, нужно ли блокировать запрос, проходит по всем правилам из политики
 func IsBlock(r *http.Request, ws *webapp.Service, ps *policy.Service,
 	rs *rule.Service, as *actionDoc.Service, executor *action.Executor) (bool, error) {
 	host := r.Host
@@ -71,7 +71,7 @@ func IsBlock(r *http.Request, ws *webapp.Service, ps *policy.Service,
 				return false, fmt.Errorf("failed to find actions by ids: %w", err)
 			}
 			for _, act := range actionDocs {
-				if ok := executor.Execute(act.Name, &action.ActionParams{Rule: rule.Name, PR: parsedRequest}); ok {
+				if ok := executor.Execute(act.Name, &action.Params{Rule: rule.Name, PR: parsedRequest}); ok {
 					shouldBlock = true
 				}
 			}

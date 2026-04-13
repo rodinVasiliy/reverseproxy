@@ -35,14 +35,14 @@ func getDefaultRules(as *actionDoc.Service) ([]rule.Rule, error) {
 		return nil, fmt.Errorf("failed to find actions %w", err)
 	}
 	logAndBlockActionNames := map[string]struct{}{
-		action.LOG_TO_DB_ACTION_NAME:     {},
-		action.BLOCK_REQUEST_ACTION_NAME: {},
+		action.LogToDbActionName:      {},
+		action.BlockRequestActionName: {},
 	}
 	logAndBlockActionIds := actionDoc.ActionIdsByNames(actions, logAndBlockActionNames)
 	logAndBlockAndSendToBlActionNames := map[string]struct{}{
-		action.LOG_TO_DB_ACTION_NAME:     {},
-		action.SEND_TO_BL_ACTION_NAME:    {},
-		action.BLOCK_REQUEST_ACTION_NAME: {},
+		action.LogToDbActionName:      {},
+		action.SendToBlActionName:     {},
+		action.BlockRequestActionName: {},
 	}
 	logAndBlockAndSendToBlActionIds := actionDoc.ActionIdsByNames(actions, logAndBlockAndSendToBlActionNames)
 

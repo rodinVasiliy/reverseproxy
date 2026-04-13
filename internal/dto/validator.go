@@ -7,7 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// ограничиваем название файла определенным шаблоном, чтобы не было непонятных символов
+// Ограничиваем название файла определенным шаблоном, чтобы не было непонятных символов
 var safeFileName = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 var upstreamRegexp = regexp.MustCompile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost):\d{2,5}$`)
 var hostnameRegex = regexp.MustCompile(`^([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$`)
