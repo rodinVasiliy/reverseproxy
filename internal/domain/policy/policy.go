@@ -7,12 +7,12 @@ import (
 type Policy struct {
 	ID    primitive.ObjectID `bson:"_id,omitempty"`
 	Name  string             `bson:"name"`
-	WL    []string           `bson:"wl"`    // список префиксов(подсетей), которые в белом списке
-	Rules []PolicyRuleRef    `bson:"rules"` // список id правила + набор action которые будут к нему применяться
+	WL    []string           `bson:"wl"`    // Список префиксов(подсетей), которые в белом списке
+	Rules []RuleRef          `bson:"rules"` // Список id правила + набор action которые будут к нему применяться
 }
 
-// если Actions будет пустой - значит берем Actions из самого правила, если не пустой - значит мы переопределили их для политики.
-type PolicyRuleRef struct {
+// RuleRef : если Actions будет пустой - значит берем Actions из самого правила, если не пустой - значит мы переопределили их для политики.
+type RuleRef struct {
 	RuleID  primitive.ObjectID   `bson:"ruleId"`
 	Actions []primitive.ObjectID `bson:"actions,omitempty"`
 }

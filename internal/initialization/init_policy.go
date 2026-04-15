@@ -15,9 +15,9 @@ func getDefaultPolicy(rs *rule.Service) (*policy.Policy, error) {
 	}
 	// добавляем к правилам дефолтные actions
 	// тут мы не указываем у PolicyRuleRef Actions [] = не переопределяем стандартный набор действий при сработке
-	var policyRuleRef []policy.PolicyRuleRef
+	var policyRuleRef []policy.RuleRef
 	for _, rule := range rules {
-		policyRuleRef = append(policyRuleRef, policy.PolicyRuleRef{RuleID: rule.ID})
+		policyRuleRef = append(policyRuleRef, policy.RuleRef{RuleID: rule.ID})
 	}
 	wl := "95.67.162.0/24" // для тестов
 	defaultPolicy := policy.Policy{WL: []string{wl}, Rules: policyRuleRef, Name: DEFAULT_POLICY_NAME}

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log"
 	"reverseproxy/internal/domain/policy"
-	ssl "reverseproxy/internal/domain/ssl"
+	"reverseproxy/internal/domain/ssl"
 	repository "reverseproxy/internal/infrastructure/mongo"
-	webapp "reverseproxy/internal/view"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -29,13 +28,14 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 	return s.repository.FindAll(ctx)
 }
 
-func (s *Service) List(ctx context.Context) ([]webapp.Response, error) {
+func (s *Service) List(ctx context.Context) ([]Response, error) {
 	webapps, err := s.repository.FindAll(ctx)
 	if err != nil {
+		log.Printf("failed to find all webapps: %v", err)
 		return nil, err
 	}
 
-	responses := make([]webapp.Response, 0, len(webapps))
+	responses := make([]Response, 0, len(webapps))
 	for _, w := range webapps {
 		policy, err := s.policyService.FindById(ctx, w.PolicyId)
 		if err != nil {
@@ -45,7 +45,7 @@ func (s *Service) List(ctx context.Context) ([]webapp.Response, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to find ssl config for webapp %v: %s", w.Name, err)
 		}
-		responses = append(responses, webapp.Response{
+		responses = append(responses, Response{
 			ID:         w.ID.Hex(),
 			Name:       w.Name,
 			PolicyId:   policy.ID.Hex(),
@@ -169,7 +169,20 @@ func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]Web
 		return nil, err
 	}
 	if len(webapps) == 0 {
-		return nil, nil
+		return []WebApp{}, nil
+	}
+	return webapps, nil
+}
+
+func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]WebApp, error) {
+	filter := bson.M{"policyId": id}
+	webapps, err := s.repository.FindMany(ctx, filter)
+	if err != nil {
+		fmt.Printf("failed to find webapps: %v", err)
+		return nil, err
+	}
+	if len(webapps) == 0 {
+		return []WebApp{}, nil
 	}
 	return webapps, nil
 }

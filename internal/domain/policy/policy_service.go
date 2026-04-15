@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"log"
 	repository "reverseproxy/internal/infrastructure/mongo"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -9,7 +10,8 @@ import (
 )
 
 type Service struct {
-	repository *repository.MongoRepository[Policy]
+	repository     *repository.MongoRepository[Policy]
+	webappProvider WebappProvider
 }
 
 func NewService(repo *repository.MongoRepository[Policy]) *Service {
@@ -30,4 +32,22 @@ func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*Policy,
 
 func (s *Service) FindAll(ctx context.Context) ([]Policy, error) {
 	return s.repository.FindAll(ctx)
+}
+
+func (s *Service) List(ctx context.Context) ([]Response, error) {
+	policies, err := s.repository.FindAll(ctx)
+	if err != nil {
+		log.Printf("failed to find webapps: %v", err)
+		return nil, err
+	}
+	responses := make([]Response, 0, len(policies))
+	for _, policy := range policies {
+		webapps, err := s.webappProvider.FindByPolicyId(policy.ID, ctx)
+		if err != nil {
+			log.Printf("failed to find webapps: %v", err)
+			continue
+		}
+		responses = append(responses, Response{ID: policy.ID.Hex(), Name: policy.Name, Webapps: webapps})
+	}
+	return responses, nil
 }

@@ -38,12 +38,12 @@ func getSSLConfigs(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		dtos := make([]dto.SSLConfigurationDTO, 0, len(sslConfigs))
+		sslConfigurationDTOS := make([]dto.SSLConfigurationDTO, 0, len(sslConfigs))
 		for _, sslConfig := range sslConfigs {
 			sslConfigDTO := dto.ToSSLConfigDTO(sslConfig)
-			dtos = append(dtos, *sslConfigDTO)
+			sslConfigurationDTOS = append(sslConfigurationDTOS, *sslConfigDTO)
 		}
-		c.JSON(200, dtos)
+		c.JSON(200, sslConfigurationDTOS)
 	}
 }
 
@@ -195,7 +195,7 @@ func updateSSLConfig(s *ssl.Service) gin.HandlerFunc {
 
 func listSSLFiles() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// файлы с сертами и ключами у нас находятся тут
+		// файлы с сертификатами и ключами у нас находятся тут
 		files, err := os.ReadDir("/etc/nginx/ssl")
 		if err != nil {
 			log.Printf("failed to read ssl directory")
@@ -203,8 +203,8 @@ func listSSLFiles() gin.HandlerFunc {
 			return
 		}
 
-		certs := []string{}
-		keys := []string{}
+		var certs []string
+		var keys []string
 
 		for _, f := range files {
 			if f.IsDir() {

@@ -22,6 +22,7 @@ func getActions(s *action.Service) gin.HandlerFunc {
 		if err != nil {
 			log.Printf("failed to find all actions in get actions api method %v", err)
 			httpx.InternalError(ctx)
+			return
 		}
 		dtos := make([]dto.ActionDTO, 0, len(actions))
 		for _, a := range actions {

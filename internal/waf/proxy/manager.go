@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// key - webapp id, value - proxy with upstream
+// Manager key - webapp id, value - proxy with upstream
 type Manager struct {
 	proxies map[primitive.ObjectID]*httputil.ReverseProxy
 }
@@ -22,12 +22,12 @@ func NewManager(webAppService *webApp.Service) (*Manager, error) {
 		return nil, fmt.Errorf("failed to load waf config %s", err)
 	}
 	resultMap := make(map[primitive.ObjectID]*httputil.ReverseProxy)
-	for _, webApp := range webApps {
-		proxy, err := newProxyForUpstream(webApp.Upstream)
+	for _, wa := range webApps {
+		proxy, err := newProxyForUpstream(wa.Upstream)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Proxy for webApp %s", err)
 		}
-		resultMap[webApp.ID] = proxy
+		resultMap[wa.ID] = proxy
 	}
 	return &Manager{proxies: resultMap}, nil
 }
