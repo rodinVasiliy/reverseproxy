@@ -51,7 +51,7 @@ func (s *Service) List(ctx context.Context) ([]Response, error) {
 			log.Printf("failed to find webapps: %v", err)
 			continue
 		}
-		responses = append(responses, Response{ID: policy.ID.Hex(), Name: policy.Name, Webapps: webapps})
+		responses = append(responses, Response{ID: policy.ID.Hex(), WL: policy.WL, Name: policy.Name, Webapps: webapps})
 	}
 	return responses, nil
 }
