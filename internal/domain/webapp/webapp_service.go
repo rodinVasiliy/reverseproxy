@@ -162,6 +162,7 @@ func (s *Service) update(app WebApp, ctx context.Context) {
 	editNginxFiles(app, nginxConfig)
 }
 
+// FindBySSLId TODO сделать логику как у функции ниже
 func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]WebApp, error) {
 	filter := bson.M{"SSLId": id}
 	webapps, err := s.repository.FindMany(ctx, filter)
@@ -174,7 +175,7 @@ func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]Web
 	return webapps, nil
 }
 
-func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]WebApp, error) {
+func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]string, error) {
 	filter := bson.M{"policyId": id}
 	webapps, err := s.repository.FindMany(ctx, filter)
 	if err != nil {
@@ -182,7 +183,11 @@ func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]
 		return nil, err
 	}
 	if len(webapps) == 0 {
-		return []WebApp{}, nil
+		return []string{}, nil
 	}
-	return webapps, nil
+	result := make([]string, len(webapps))
+	for i, webapp := range webapps {
+		result[i] = webapp.ID.Hex()
+	}
+	return result, nil
 }

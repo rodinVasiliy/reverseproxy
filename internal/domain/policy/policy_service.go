@@ -14,8 +14,8 @@ type Service struct {
 	webappProvider WebappProvider
 }
 
-func NewService(repo *repository.MongoRepository[Policy]) *Service {
-	return &Service{repository: repo}
+func NewService(repo *repository.MongoRepository[Policy], provider WebappProvider) *Service {
+	return &Service{repository: repo, webappProvider: provider}
 }
 
 func (s *Service) Insert(ctx context.Context, policy Policy) (primitive.ObjectID, error) {
