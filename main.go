@@ -121,8 +121,6 @@ func main() {
 
 	fmt.Println("Config Initialization started...")
 
-	var webAppService *webapp.Service
-
 	actionRepository := repository.NewMongoRepository[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
 	actionService := actionDoc.NewService(actionRepository)
 
@@ -134,13 +132,16 @@ func main() {
 	ruleService := rule.NewService(ruleRepository)
 
 	policyRepository := repository.NewMongoRepository[policy.Policy](mongoDeps.Client, repository.DB_NAME, repository.POLICY_COLLECTION)
-	policyService := policy.NewService(policyRepository, webAppService)
+	policyService := policy.NewService(policyRepository)
 
 	sslRepository := repository.NewMongoRepository[ssl.SSLConfiguration](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
 	sslService := ssl.NewService(sslRepository)
 
 	webappRepository := repository.NewMongoRepository[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
-	webAppService = webapp.NewService(webappRepository, sslService, policyService)
+	webAppService := webapp.NewService(webappRepository, sslService, policyService)
+
+	policyService.SetWebappProvider(webAppService)
+
 	go webAppService.WatchChanges() // запускаем отсмотр изменений
 	// если что-то поменяется в webapp, каждая нода будет отлавливать эти изменения и создавать/удалять у себя файлы
 
