@@ -187,7 +187,7 @@ func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]
 	}
 	result := make([]string, len(webapps))
 	for i, webapp := range webapps {
-		result[i] = webapp.ID.Hex()
+		result[i] = webapp.Name
 	}
 	return result, nil
 }
