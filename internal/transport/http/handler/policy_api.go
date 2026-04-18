@@ -2,16 +2,19 @@ package handler
 
 import (
 	"log"
-	policy "reverseproxy/internal/domain/policy"
+	"net/http"
+	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/httpx"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func RegisterPolicyRoutes(r *gin.RouterGroup, s *policy.Service) {
 	g := r.Group("/policies")
 	{
 		g.GET("", getPolicies(s))
+		g.DELETE("/:id", deletePolicy(s))
 	}
 }
 
@@ -24,5 +27,49 @@ func getPolicies(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(200, responses)
+	}
+}
+
+func deletePolicy(s *policy.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := primitive.ObjectIDFromHex(c.Param("id"))
+		if err != nil {
+			log.Printf("failed to parse id in delete policy api: %v", err)
+			httpx.BadRequest(c, "invalid id")
+			return
+		}
+
+		p, err := s.FindById(c, id)
+		if err != nil {
+			log.Printf("failed to find policy in delete policy api: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+
+		webappNames, err := s.FindWebappNamesByPolicyId(c, id)
+		if err != nil {
+			log.Printf("failed to find webapp names by policy id in delete policy api: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+		if len(webappNames) > 0 {
+			log.Printf("policy %v in use in webapps: %v", p.Name, webappNames)
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "policy_in_use",
+				"message": "Policy is used",
+				"webapps": webappNames,
+			})
+			return
+		}
+
+		err = s.Delete(c.Request.Context(), p)
+		if err != nil {
+			log.Printf("failed to delete policy in delete policy api: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+
+		c.Status(204)
 	}
 }

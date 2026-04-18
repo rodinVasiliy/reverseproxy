@@ -55,3 +55,11 @@ func (s *Service) List(ctx context.Context) ([]Response, error) {
 	}
 	return responses, nil
 }
+
+func (s *Service) FindWebappNamesByPolicyId(ctx context.Context, id primitive.ObjectID) ([]string, error) {
+	return s.webappProvider.FindByPolicyId(id, ctx)
+}
+
+func (s *Service) Delete(ctx context.Context, entity *Policy) error {
+	return s.repository.Delete(ctx, entity)
+}
