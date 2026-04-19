@@ -73,3 +73,22 @@ func deletePolicy(s *policy.Service) gin.HandlerFunc {
 		c.Status(204)
 	}
 }
+
+//func updatePolicy(s *policy.Service) gin.HandlerFunc {
+//	return func(c *gin.Context) {
+//		id, err := primitive.ObjectIDFromHex(c.Param("id"))
+//		if err != nil {
+//			log.Printf("failed to parse id in update policy api: %v", err)
+//			httpx.BadRequest(c, "invalid id")
+//			return
+//		}
+//
+//		err = s.Update(c.Request.Context(), p)
+//		if err != nil {
+//			log.Printf("failed to update policy in update policy api: %v", err)
+//			httpx.InternalError(c)
+//			return
+//		}
+//		c.Status(204)
+//	}
+//}

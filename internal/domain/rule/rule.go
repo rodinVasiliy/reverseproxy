@@ -6,13 +6,13 @@ import (
 
 type Rule struct {
 	ID      primitive.ObjectID   `bson:"_id,omitempty"`
-	Enabled bool                 `bson:"enabled"` // включено ли правило
-	Name    string               `bson:"name"`    // название правила
-	Expr    ExprDoc              `bson:"expr"`    // набор условий правила(точнее его версия которая может храниться в базе)
-	Actions []primitive.ObjectID `bson:"actions"` // список actions(их id)
+	Enabled bool                 `bson:"enabled"` // Включено ли правило
+	Name    string               `bson:"name"`    // Название правила
+	Expr    ExprDoc              `bson:"expr"`    // Набор условий правила(точнее его версия, которая может храниться в базе)
+	Actions []primitive.ObjectID `bson:"actions"` // Список actions(их id)
 }
 
-// вернет true, если запрос попал под правило, false - иначе
+// Match Возвращает true, если запрос попал под правило, false - иначе
 func (rule *Rule) Match(requestMap map[string]string) bool {
 	Expr := BuildExpr(rule.Expr)
 	return Expr.Match(requestMap)

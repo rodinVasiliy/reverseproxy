@@ -8,7 +8,7 @@ type Policy struct {
 	ID    primitive.ObjectID `bson:"_id,omitempty"`
 	Name  string             `bson:"name"`
 	WL    []string           `bson:"wl"`    // Список префиксов(подсетей), которые в белом списке
-	Rules []RuleRef          `bson:"rules"` // Список id правила + набор action которые будут к нему применяться
+	Rules []RuleRef          `bson:"rules"` // Список id правила + срез id action, которые применяются к правилу
 }
 
 // RuleRef : если Actions будет пустой - значит берем Actions из самого правила, если не пустой - значит мы переопределили их для политики.

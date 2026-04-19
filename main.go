@@ -141,6 +141,8 @@ func main() {
 	webAppService := webapp.NewService(webappRepository, sslService, policyService)
 
 	policyService.SetWebappProvider(webAppService)
+	policyService.SetActionService(actionService)
+	policyService.SetRuleService(ruleService)
 
 	go webAppService.WatchChanges() // запускаем отсмотр изменений
 	// если что-то поменяется в webapp, каждая нода будет отлавливать эти изменения и создавать/удалять у себя файлы
