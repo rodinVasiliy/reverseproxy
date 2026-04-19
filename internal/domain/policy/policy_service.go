@@ -2,8 +2,6 @@ package policy
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"reverseproxy/internal/domain/action"
 	"reverseproxy/internal/domain/rule"
 	repository "reverseproxy/internal/infrastructure/mongo"
@@ -51,16 +49,14 @@ func (s *Service) FindAll(ctx context.Context) ([]Policy, error) {
 	return s.repository.FindAll(ctx)
 }
 
-func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID) (*Detail, error) {
+func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID) (*PolicyDetail, error) {
 	policy, err := s.FindById(ctx, id)
 	if err != nil {
-		fmt.Printf("failed to find policy by id: %v", err)
 		return nil, err
 	}
 
 	actions, err := s.actionService.FindAll(ctx)
 	if err != nil {
-		fmt.Printf("failed to find all actions: %v", err)
 		return nil, err
 	}
 	actionsMap := sliceToMap(actions, func(a action.ActionDoc) primitive.ObjectID {
@@ -69,7 +65,6 @@ func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID
 
 	rules, err := s.ruleService.FindAll(ctx)
 	if err != nil {
-		fmt.Printf("failed to find all rules: %v", err)
 		return nil, err
 	}
 
@@ -77,7 +72,7 @@ func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID
 		return r.ID
 	})
 
-	var detail Detail
+	var detail PolicyDetail
 	detail.ID = id
 	detail.Name = policy.Name
 	detail.WL = policy.WL
@@ -92,16 +87,16 @@ func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID
 			actionIDs = rule.Actions
 		}
 
-		var actionViews []ActionView
+		var actionViews []ActionDetail
 		for _, aid := range actionIDs {
 			a := actionsMap[aid]
-			actionViews = append(actionViews, ActionView{
+			actionViews = append(actionViews, ActionDetail{
 				ID:   a.ID,
 				Name: a.Name,
 			})
 		}
 
-		detail.Rules = append(detail.Rules, RuleRefView{
+		detail.Rules = append(detail.Rules, PolicyRuleDetail{
 			ID:      rule.ID,
 			Name:    rule.Name,
 			Enabled: rule.Enabled,
@@ -114,32 +109,36 @@ func (s *Service) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID
 
 }
 
-func (s *Service) List(ctx context.Context) ([]ListItem, error) {
+func (s *Service) GetWebappsByPolicyId(ctx context.Context, id primitive.ObjectID) ([]string, error) {
+	return s.webappProvider.FindByPolicyId(id, ctx)
+}
+
+func (s *Service) List(ctx context.Context) ([]PolicyListItem, error) {
 	policies, err := s.repository.FindAll(ctx)
 	if err != nil {
-		log.Printf("failed to find webapps: %v", err)
 		return nil, err
 	}
-	items := make([]ListItem, 0, len(policies))
+	items := make([]PolicyListItem, 0, len(policies))
+
+	policyIds := make([]primitive.ObjectID, len(policies))
+	for i := range policies {
+		policyIds[i] = policies[i].ID
+	}
+
+	webappsMap, err := s.webappProvider.FindByPolicyIDs(policyIds, ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, policy := range policies {
-		webapps, err := s.webappProvider.FindByPolicyId(policy.ID, ctx)
-		if err != nil {
-			fmt.Printf("failed to find webapps by policy id: %v", err)
-			return nil, err
-		}
-		items = append(items, ListItem{
+		items = append(items, PolicyListItem{
 			ID:      policy.ID,
 			Name:    policy.Name,
 			WL:      policy.WL,
-			Webapps: webapps,
+			Webapps: webappsMap[policy.ID],
 		})
 	}
 	return items, nil
-}
-
-func (s *Service) FindWebappNamesByPolicyId(ctx context.Context, id primitive.ObjectID) ([]string, error) {
-	return s.webappProvider.FindByPolicyId(id, ctx)
 }
 
 func (s *Service) Delete(ctx context.Context, entity *Policy) error {

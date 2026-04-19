@@ -84,22 +84,16 @@ func deleteSSLConfig(s *ssl.Service, w *webapp.Service) gin.HandlerFunc {
 			return
 		}
 
-		webapps, err := w.FindBySSLId(id, c.Request.Context())
+		webappNames, err := w.FindBySSLId(id, c.Request.Context())
 		if err != nil {
 			log.Printf("failed to find webapps by id: %v, %v", id.Hex(), err)
 			httpx.InternalError(c)
 		}
-		if len(webapps) > 0 {
-			names := make([]string, 0, len(webapps))
-			for _, w := range webapps {
-				names = append(names, w.Name)
-			}
-			log.Printf("ssl %v in use in webapps: %v", sslConfiguration.Name, names)
-
+		if len(webappNames) > 0 {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    "ssl_in_use",
 				"message": "SSL config is used",
-				"webapps": names,
+				"webapps": webappNames,
 			})
 			return
 		}

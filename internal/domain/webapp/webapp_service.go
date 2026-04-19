@@ -99,7 +99,6 @@ func (s *Service) WatchChanges() {
 	defer stream.Close(ctx)
 
 	for stream.Next(ctx) {
-		fmt.Println("change detected")
 		var event struct {
 			OperationType string `bson:"operationType"`
 			FullDocument  WebApp `bson:"fullDocument"`
@@ -112,8 +111,6 @@ func (s *Service) WatchChanges() {
 			log.Println(err)
 			continue
 		}
-
-		fmt.Println("operation type: ", event.OperationType)
 
 		switch event.OperationType {
 
@@ -162,32 +159,50 @@ func (s *Service) update(app WebApp, ctx context.Context) {
 	editNginxFiles(app, nginxConfig)
 }
 
-// FindBySSLId TODO сделать логику как у функции ниже
-func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]WebApp, error) {
+func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]string, error) {
 	filter := bson.M{"SSLId": id}
 	webapps, err := s.repository.FindMany(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	if len(webapps) == 0 {
-		return []WebApp{}, nil
+		return []string{}, nil
 	}
-	return webapps, nil
+	result := make([]string, len(webapps))
+	for i, w := range webapps {
+		result[i] = w.Name
+	}
+	return result, nil
 }
 
 func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]string, error) {
-	filter := bson.M{"policyId": id}
+	filter := bson.M{"PolicyId": id}
 	webapps, err := s.repository.FindMany(ctx, filter)
 	if err != nil {
-		fmt.Printf("failed to find webapps: %v", err)
 		return nil, err
 	}
 	if len(webapps) == 0 {
 		return []string{}, nil
 	}
 	result := make([]string, len(webapps))
-	for i, webapp := range webapps {
-		result[i] = webapp.Name
+	for i, w := range webapps {
+		result[i] = w.Name
+	}
+	return result, nil
+}
+
+func (s *Service) FindByPolicyIDs(ids []primitive.ObjectID, ctx context.Context) (map[primitive.ObjectID][]string, error) {
+	filter := bson.M{
+		"policyId": bson.M{"$in": ids},
+	}
+	webapps, err := s.repository.FindMany(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[primitive.ObjectID][]string)
+	for _, w := range webapps {
+		result[w.PolicyId] = append(result[w.PolicyId], w.Name)
 	}
 	return result, nil
 }
