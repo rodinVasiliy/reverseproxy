@@ -118,6 +118,9 @@ func updatePolicy(s *policy.Service) gin.HandlerFunc {
 			httpx.BadRequest(c, "invalid json body")
 			return
 		}
+		if policyDTO.WL == nil {
+			policyDTO.WL = []string{}
+		}
 
 		if err := dto.Validate.Struct(&policyDTO); err != nil {
 			handleValidationError(err, c)

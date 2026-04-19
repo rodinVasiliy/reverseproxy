@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"net"
 	"regexp"
 	"strings"
 
@@ -77,6 +78,17 @@ func isValidHostname(h string) bool {
 	return hostnameRegex.MatchString(h)
 }
 
+func networkValidator(fl validator.FieldLevel) bool {
+	v := fl.Field().String()
+
+	if v == "" {
+		return false
+	}
+
+	_, _, err := net.ParseCIDR(v)
+	return err == nil
+}
+
 var Validate *validator.Validate
 
 func init() {
@@ -87,4 +99,5 @@ func init() {
 	Validate.RegisterValidation("webappname", webAppNameValidator)
 	Validate.RegisterValidation("upstream", upstreamValidator)
 	Validate.RegisterValidation("host", hostnameValidator)
+	Validate.RegisterValidation("wl", networkValidator)
 }
