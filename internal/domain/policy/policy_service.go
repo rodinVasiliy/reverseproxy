@@ -122,18 +122,18 @@ func (s *Service) List(ctx context.Context) ([]ListItem, error) {
 	}
 	items := make([]ListItem, 0, len(policies))
 
-	for i, policy := range policies {
+	for _, policy := range policies {
 		webapps, err := s.webappProvider.FindByPolicyId(policy.ID, ctx)
 		if err != nil {
 			fmt.Printf("failed to find webapps by policy id: %v", err)
 			return nil, err
 		}
-		items[i] = ListItem{
+		items = append(items, ListItem{
 			ID:      policy.ID,
 			Name:    policy.Name,
 			WL:      policy.WL,
 			Webapps: webapps,
-		}
+		})
 	}
 	return items, nil
 }
