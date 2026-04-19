@@ -5,11 +5,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	appSSLService "reverseproxy/internal/domain/app/ssl"
 	"reverseproxy/internal/domain/ssl"
-	"reverseproxy/internal/domain/webapp"
 	"reverseproxy/internal/dto"
 	"reverseproxy/internal/httpx"
-	mongorep "reverseproxy/internal/infrastructure/mongo"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,12 +16,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service, w *webapp.Service) {
+func RegisterSSLRoutes(r *gin.RouterGroup, s *ssl.Service, as *appSSLService.AppSSLService) {
 	g := r.Group("/ssls")
 	{
 		g.GET("", getSSLConfigs(s))
 		g.POST("", createSSLConfig(s))
-		g.DELETE("/:id", deleteSSLConfig(s, w))
+		g.DELETE("/:id", deleteSSLConfig(s, as))
 		g.PUT("/:id", updateSSLConfig(s))
 		g.GET("/files", listSSLFiles())
 		g.GET("/:id", getSSLConfigByID(s))
@@ -65,7 +64,7 @@ func getSSLConfigByID(s *ssl.Service) gin.HandlerFunc {
 	}
 }
 
-func deleteSSLConfig(s *ssl.Service, w *webapp.Service) gin.HandlerFunc {
+func deleteSSLConfig(s *ssl.Service, as *appSSLService.AppSSLService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -73,31 +72,31 @@ func deleteSSLConfig(s *ssl.Service, w *webapp.Service) gin.HandlerFunc {
 			return
 		}
 
-		sslConfiguration, err := s.FindByID(c.Request.Context(), id)
+		err = as.CanDeleteSSL(c.Request.Context(), id)
 		if err != nil {
-			if errors.Is(err, mongorep.ErrNotFound) {
-				httpx.NotFound(c, "ssl_config")
+			var inUse *ssl.SSLInUseError
+			if errors.As(err, &inUse) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"code":    "ssl_in_use",
+					"message": "SSL is used",
+					"webapps": inUse.Webapps,
+				})
 				return
 			}
-			log.Printf("failed to find ssl by id: %v, %v", id.Hex(), err)
+
+			log.Printf("failed to delete ssl configuration in delete ssl api: %v", err)
 			httpx.InternalError(c)
 			return
 		}
 
-		webappNames, err := w.FindBySSLId(id, c.Request.Context())
+		sslConfig, err := s.FindByID(c.Request.Context(), id)
 		if err != nil {
-			log.Printf("failed to find webapps by id: %v, %v", id.Hex(), err)
+			log.Printf("failed to find ssl config by id: %v", err)
 			httpx.InternalError(c)
-		}
-		if len(webappNames) > 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "ssl_in_use",
-				"message": "SSL config is used",
-				"webapps": webappNames,
-			})
 			return
 		}
-		err = s.Delete(c.Request.Context(), sslConfiguration)
+
+		err = s.Delete(c.Request.Context(), sslConfig)
 		if err != nil {
 			log.Printf("failed to delete ssl config: %v", err)
 			httpx.InternalError(c)

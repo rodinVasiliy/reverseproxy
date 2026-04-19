@@ -13,7 +13,7 @@ type SSLConfigurationDTO struct {
 	KeyFileName  string `json:"key" validate:"required,keyfilename"`
 }
 
-func ToSSLConfigDTO(ssl ssl.SSLConfiguration) *SSLConfigurationDTO {
+func ToSSLConfigDTO(ssl ssl.SSL) *SSLConfigurationDTO {
 	return &SSLConfigurationDTO{
 		ID:           ssl.ID.Hex(),
 		Name:         ssl.Name,
@@ -23,8 +23,8 @@ func ToSSLConfigDTO(ssl ssl.SSLConfiguration) *SSLConfigurationDTO {
 }
 
 // Вернет ошибку, если не смог сконвертировать id в primitive.ObjectId
-func DTOToSSLConfig(dto SSLConfigurationDTO) (*ssl.SSLConfiguration, error) {
-	SSLConfiguration := ssl.SSLConfiguration{
+func DTOToSSLConfig(dto SSLConfigurationDTO) (*ssl.SSL, error) {
+	SSLConfiguration := ssl.SSL{
 		Name:         dto.Name,
 		CertFileName: dto.CertFileName,
 		KeyFileName:  dto.KeyFileName,

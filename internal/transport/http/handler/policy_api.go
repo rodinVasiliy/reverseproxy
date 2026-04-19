@@ -4,9 +4,10 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	appPolicy "reverseproxy/internal/domain/app/policy"
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/dto"
-	policy2 "reverseproxy/internal/dto/policy"
+	policyDto "reverseproxy/internal/dto/policy"
 	"reverseproxy/internal/httpx"
 	"reverseproxy/internal/mapper"
 
@@ -14,18 +15,19 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterPolicyRoutes(r *gin.RouterGroup, s *policy.Service) {
+func RegisterPolicyRoutes(r *gin.RouterGroup, s *policy.Service, aps *appPolicy.AppPolicyService) {
 	g := r.Group("/policies")
 	{
-		g.GET("", getPolicies(s))
-		g.GET("/:id", getPolicy(s))
-		g.DELETE("/:id", deletePolicy(s))
+		g.GET("", getPolicies(aps))
+		g.GET("/:id", getPolicy(aps))
+		g.DELETE("/:id", deletePolicy(s, aps))
+		g.PUT("/:id", updatePolicy(s))
 	}
 }
 
-func getPolicies(s *policy.Service) gin.HandlerFunc {
+func getPolicies(aps *appPolicy.AppPolicyService) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		items, err := s.List(ctx.Request.Context())
+		items, err := aps.List(ctx.Request.Context())
 		if err != nil {
 			log.Printf("failed to find all policies in get policy api: %v", err)
 			httpx.InternalError(ctx)
@@ -37,7 +39,7 @@ func getPolicies(s *policy.Service) gin.HandlerFunc {
 	}
 }
 
-func deletePolicy(s *policy.Service) gin.HandlerFunc {
+func deletePolicy(s *policy.Service, aps *appPolicy.AppPolicyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -53,7 +55,7 @@ func deletePolicy(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 
-		err = s.CanDeletePolicy(c.Request.Context(), id)
+		err = aps.CanDeletePolicy(c.Request.Context(), id)
 		if err != nil {
 			var inUse *policy.PolicyInUseError
 			if errors.As(err, &inUse) {
@@ -81,7 +83,7 @@ func deletePolicy(s *policy.Service) gin.HandlerFunc {
 	}
 }
 
-func getPolicy(s *policy.Service) gin.HandlerFunc {
+func getPolicy(aps *appPolicy.AppPolicyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -90,7 +92,7 @@ func getPolicy(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 
-		p, err := s.GetPolicyDetailById(c, id)
+		p, err := aps.GetPolicyDetailById(c, id)
 		if err != nil {
 			log.Printf("failed to find policy in get policy api: %v", err)
 			httpx.InternalError(c)
@@ -111,7 +113,7 @@ func updatePolicy(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 
-		var policyDTO policy2.Dto
+		var policyDTO policyDto.Dto
 		if err := c.ShouldBindJSON(&policyDTO); err != nil {
 			httpx.BadRequest(c, "invalid json body")
 			return

@@ -8,29 +8,29 @@ import (
 )
 
 type Service struct {
-	repository *repository.MongoRepository[SSLConfiguration]
+	repository *repository.MongoRepository[SSL]
 }
 
-func NewService(repo *repository.MongoRepository[SSLConfiguration]) *Service {
+func NewService(repo *repository.MongoRepository[SSL]) *Service {
 	return &Service{repository: repo}
 }
 
-func (s *Service) FindByID(ctx context.Context, id primitive.ObjectID) (*SSLConfiguration, error) {
+func (s *Service) FindByID(ctx context.Context, id primitive.ObjectID) (*SSL, error) {
 	return s.repository.FindById(ctx, id)
 }
 
-func (s *Service) Insert(ctx context.Context, ssl SSLConfiguration) (primitive.ObjectID, error) {
+func (s *Service) Insert(ctx context.Context, ssl SSL) (primitive.ObjectID, error) {
 	return s.repository.Insert(ctx, ssl)
 }
 
-func (s *Service) FindAll(ctx context.Context) ([]SSLConfiguration, error) {
+func (s *Service) FindAll(ctx context.Context) ([]SSL, error) {
 	return s.repository.FindAll(ctx)
 }
 
-func (s *Service) Delete(ctx context.Context, entity *SSLConfiguration) error {
+func (s *Service) Delete(ctx context.Context, entity *SSL) error {
 	return s.repository.Delete(ctx, entity)
 }
 
-func (s *Service) Update(ctx context.Context, entity *SSLConfiguration) error {
+func (s *Service) Update(ctx context.Context, entity *SSL) error {
 	return s.repository.Update(ctx, entity)
 }

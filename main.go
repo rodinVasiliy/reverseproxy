@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	actionDoc "reverseproxy/internal/domain/action"
+	appPolicyService "reverseproxy/internal/domain/app/policy"
+	appSSLService "reverseproxy/internal/domain/app/ssl"
+	appWebAppService "reverseproxy/internal/domain/app/webapp"
 	policy "reverseproxy/internal/domain/policy"
 	rule "reverseproxy/internal/domain/rule"
 	ssl "reverseproxy/internal/domain/ssl"
@@ -38,7 +41,9 @@ func getInItFlag() bool {
 	return os.Getenv("INIT") == "1"
 }
 
-func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service, webAppService *webapp.Service, manager *manager.Manager) {
+func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service,
+	webAppService *webapp.Service, appWebappService *appWebAppService.AppWebappService, appSSLService *appSSLService.AppSSLService,
+	appPolicyService *appPolicyService.AppPolicyService, manager *manager.Manager) {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -47,9 +52,9 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	}))
 	api := adminRouter.Group("/admin/api")
 	handler.RegisterActionRoutes(api, actionService)
-	handler.RegisterPolicyRoutes(api, policyService)
-	handler.RegisterSSLRoutes(api, sslService, webAppService)
-	handler.RegisterWebAppRoutes(api, webAppService, manager)
+	handler.RegisterPolicyRoutes(api, policyService, appPolicyService)
+	handler.RegisterSSLRoutes(api, sslService, appSSLService)
+	handler.RegisterWebAppRoutes(api, webAppService, appWebappService, manager)
 
 	// to do ip брать из конфигурационного файла
 	go func() {
@@ -71,19 +76,19 @@ func main() {
 		fmt.Printf("failed to read waf node configuration %s", err)
 		return
 	}
-	// порт прокси(waf), куда nginx будет отправлять запросы
+	// Порт прокси(waf), куда nginx будет отправлять запросы
 	port := nodeConfig.Port
 
 	errorLogFileName := filepath.Join("log", "error.log")
 	accessLogFileName := filepath.Join("log", "access.log")
 
-	// тут идет настройка лог файла, в котором будут отображаться ошибки
+	// Тут идет настройка лог файла, в котором будут отображаться ошибки
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
 		return
 	}
-	// все ошибки будут логироваться в error log
+	// Все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
@@ -101,7 +106,7 @@ func main() {
 		return
 	}
 
-	// загружаем гео базу
+	// Загружаем гео базу
 	fmt.Println("loading geo base from file ...")
 	err = geo.InitGeo()
 	if err != nil {
@@ -111,7 +116,7 @@ func main() {
 	}
 
 	fmt.Println("Getting mongo db dependencies ...")
-	// подключаемся к монгодб
+	// Подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s\n", err)
@@ -124,7 +129,7 @@ func main() {
 	actionRepository := repository.NewMongoRepository[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
 	actionService := actionDoc.NewService(actionRepository)
 
-	// сами actions, зашитые в код
+	// Сами actions, зашитые в код
 	actionRegistry := action.NewActionRegistry(accessLogger, blackList)
 	actionExecutor := action.NewExecutor(actionRegistry)
 
@@ -134,21 +139,22 @@ func main() {
 	policyRepository := repository.NewMongoRepository[policy.Policy](mongoDeps.Client, repository.DB_NAME, repository.POLICY_COLLECTION)
 	policyService := policy.NewService(policyRepository)
 
-	sslRepository := repository.NewMongoRepository[ssl.SSLConfiguration](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
+	sslRepository := repository.NewMongoRepository[ssl.SSL](mongoDeps.Client, repository.DB_NAME, repository.SSL_COLLECTION)
 	sslService := ssl.NewService(sslRepository)
 
 	webappRepository := repository.NewMongoRepository[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
-	webAppService := webapp.NewService(webappRepository, sslService, policyService)
+	webappService := webapp.NewService(webappRepository)
+	webappSyncService := appWebAppService.NewWebappSyncService(sslService)
 
-	policyService.SetWebappProvider(webAppService)
-	policyService.SetActionService(actionService)
-	policyService.SetRuleService(ruleService)
+	appWebappService := appWebAppService.NewService(webappService, policyService, sslService)
+	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService)
+	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
 
-	go webAppService.WatchChanges() // запускаем отсмотр изменений
-	// если что-то поменяется в webapp, каждая нода будет отлавливать эти изменения и создавать/удалять у себя файлы
+	watcher := webapp.NewWatcher(webappRepository, webappSyncService)
+	go watcher.Watch(context.Background())
 
-	// конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
-	manager, err := manager.NewManager(webAppService)
+	// Конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
+	manager, err := manager.NewManager(webappService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
 		closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -157,20 +163,20 @@ func main() {
 	fmt.Println("Waf Config successfully loaded")
 
 	fmt.Println("starting admin api")
-	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webAppService, manager)
+	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
+		appSSLService, appPolicyService, manager)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
 		utils.ClearAllCollections(mongoDeps)
 		utils.DropOldWebappFiles()
-		go webAppService.WatchChanges()
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
 			closeAll(blackList, errorLogConfig, accessLogConfig)
 			return
 		}
-		err = initialization.NewTestWebApp(policyService, sslService, webAppService)
+		err = initialization.NewTestWebApp(policyService, sslService, webappService)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
 			closeAll(blackList, errorLogConfig, accessLogConfig)
@@ -194,8 +200,8 @@ func main() {
 			return
 		}
 
-		// проверяем, нужно ли блокировать запрос
-		isBlock, err := check_request.IsBlock(r, webAppService, policyService, ruleService, actionService, actionExecutor)
+		// Проверяем, нужно ли блокировать запрос
+		isBlock, err := check_request.IsBlock(r, webappService, policyService, ruleService, actionService, actionExecutor)
 		if err != nil {
 			fmt.Printf("failed to check request %s", err)
 			return
@@ -210,10 +216,10 @@ func main() {
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
 
-		webApp, err := webAppService.GetWebAppForHost(r.Context(), host)
+		webApp, err := webappService.GetWebAppForHost(r.Context(), host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
-			// может тут надо блок? или ошибку 5**
+			// Может тут надо блок? Или ошибку 5**
 			return
 		}
 		proxy := manager.GetProxyForWebApp(webApp)
@@ -222,7 +228,7 @@ func main() {
 		proxy.ServeHTTP(w, r)
 	})
 
-	// слушаем только с nginx
+	// Слушаем только с nginx
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
 	server := &http.Server{
@@ -257,7 +263,7 @@ func main() {
 	log.Println("Server stopped")
 }
 
-// закрываем нужные ресурсы - файл для лога и гео базу
+// Закрываем нужные ресурсы - файл для лога и гео базу
 func closeAll(bl bl.Blacklist, errorLogConfig, accessLogConfig *log_config.LogConfig) {
 	errorLogConfig.CloseLogFile()
 	accessLogConfig.CloseLogFile()

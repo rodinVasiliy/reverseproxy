@@ -6,12 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reverseproxy/internal/domain/webapp"
 	"strings"
 )
 
 var SSL_FILES_PATH = "/etc/nginx/ssl"
 
-func generateNginxConfig(app WebApp, certFileName string, keyFileName string) string {
+func generateNginxConfig(app webapp.WebApp, certFileName string, keyFileName string) string {
 	hosts := strings.Join(app.Hosts, " ")
 	certPath := filepath.Join(SSL_FILES_PATH, certFileName)
 	keyPath := filepath.Join(SSL_FILES_PATH, keyFileName)
@@ -38,7 +39,7 @@ server {
 `, app.Port, hosts, certPath, keyPath)
 }
 
-func createNginxFiles(app WebApp, config string) {
+func createNginxFiles(app webapp.WebApp, config string) {
 	fmt.Println("creating nginx config for", app.ID.Hex())
 	available := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(available, []byte(config), 0644)
@@ -49,7 +50,7 @@ func createNginxFiles(app WebApp, config string) {
 	reloadNginx()
 }
 
-func deleteNginxFiles(app WebApp) {
+func deleteNginxFiles(app webapp.WebApp) {
 	available := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	enabled := fmt.Sprintf("/etc/nginx/sites-enabled/webapp-%s.conf", app.ID.Hex())
 
@@ -58,7 +59,7 @@ func deleteNginxFiles(app WebApp) {
 	reloadNginx()
 }
 
-func editNginxFiles(app WebApp, newConfig string) {
+func editNginxFiles(app webapp.WebApp, newConfig string) {
 	fileName := fmt.Sprintf("/etc/nginx/sites-available/webapp-%s.conf", app.ID.Hex())
 	os.WriteFile(fileName, []byte(newConfig), 0644)
 	reloadNginx()

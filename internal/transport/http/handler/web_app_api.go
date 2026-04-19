@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"log"
+	webapp2 "reverseproxy/internal/domain/app/webapp"
 	webapp "reverseproxy/internal/domain/webapp"
 	dto "reverseproxy/internal/dto"
 	webappDto "reverseproxy/internal/dto"
@@ -15,10 +16,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, manager *manager.Manager) {
+func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, app *webapp2.AppWebappService, manager *manager.Manager) {
 	g := r.Group("/webapps")
 	{
-		g.GET("", getWebApps(s))
+		g.GET("", getWebApps(app))
 		g.POST("", createWebApp(s, manager))
 		g.PUT("/:id", updateWebApp(s, manager))
 		g.DELETE("/:id", deleteWebApp(s, manager))
@@ -26,8 +27,7 @@ func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, manager *manage
 	}
 }
 
-// Здесь используется webapp.WebappResponce в качестве выхода
-func getWebApps(s *webapp.Service) gin.HandlerFunc {
+func getWebApps(s *webapp2.AppWebappService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apps, err := s.List(c.Request.Context())
 		if err != nil {
@@ -87,11 +87,13 @@ func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			log.Printf("failed to insert web app to db: %v", err)
 			httpx.InternalError(c)
 		}
+		wa.ID = id
 
 		err = manager.SetProxyToManager(wa)
 		if err != nil {
 			log.Printf("failed to add proxy to manager: %s", err)
 			httpx.InternalError(c)
+			return
 		}
 
 		c.JSON(201, gin.H{"id": id.Hex()})
@@ -118,11 +120,11 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 		}
 
 		wa, err := webappDto.DTOToWebApp(waDTO)
-		wa.ID = id
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
 			return
 		}
+		wa.ID = id
 
 		if err := s.Edit(c.Request.Context(), wa); err != nil {
 			log.Printf("failed to edit web app: %v", err)
@@ -134,6 +136,7 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 		if err != nil {
 			log.Printf("failed to add proxy to manager: %s", err)
 			httpx.InternalError(c)
+			return
 		}
 
 		c.Status(204)
