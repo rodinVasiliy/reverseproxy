@@ -149,6 +149,17 @@ func (s *Service) Update(ctx context.Context, entity *Policy) error {
 	return s.repository.Update(ctx, entity)
 }
 
+func (s *Service) CanDeletePolicy(ctx context.Context, id primitive.ObjectID) error {
+	webapps, err := s.webappProvider.FindByPolicyId(id, ctx)
+	if err != nil {
+		return err
+	}
+	if len(webapps) > 0 {
+		return &PolicyInUseError{Webapps: webapps}
+	}
+	return nil
+}
+
 func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
 	result := make(map[K]T, len(items))
 	for _, item := range items {

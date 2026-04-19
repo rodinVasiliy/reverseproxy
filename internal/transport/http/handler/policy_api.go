@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"reverseproxy/internal/domain/policy"
@@ -52,20 +53,20 @@ func deletePolicy(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 
-		webappNames, err := s.GetWebappsByPolicyId(c, id)
+		err = s.CanDeletePolicy(c.Request.Context(), id)
 		if err != nil {
-			log.Printf("failed to find webapp names by policy id in delete policy api: %v", err)
-			httpx.InternalError(c)
-			return
-		}
-		if len(webappNames) > 0 {
-			log.Printf("policy %v in use in webapps: %v", p.Name, webappNames)
+			var inUse *policy.PolicyInUseError
+			if errors.As(err, &inUse) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"code":    "policy_in_use",
+					"message": "Policy is used",
+					"webapps": inUse.Webapps,
+				})
+				return
+			}
 
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "policy_in_use",
-				"message": "Policy is used",
-				"webapps": webappNames,
-			})
+			log.Printf("failed to delete policy in delete policy api: %v", err)
+			httpx.InternalError(c)
 			return
 		}
 

@@ -176,7 +176,7 @@ func (s *Service) FindBySSLId(id primitive.ObjectID, ctx context.Context) ([]str
 }
 
 func (s *Service) FindByPolicyId(id primitive.ObjectID, ctx context.Context) ([]string, error) {
-	filter := bson.M{"PolicyId": id}
+	filter := bson.M{"policyId": id}
 	webapps, err := s.repository.FindMany(ctx, filter)
 	if err != nil {
 		return nil, err
