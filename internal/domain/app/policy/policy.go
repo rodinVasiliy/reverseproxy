@@ -2,6 +2,7 @@ package policy
 
 import (
 	"context"
+	"log"
 	"reverseproxy/internal/domain/action"
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
@@ -85,6 +86,8 @@ func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive
 	detail.ID = id
 	detail.Name = p.Name
 	detail.WL = p.WL
+	detail.Rules = make([]policy.PolicyRuleDetail, 0, len(rules))
+	log.Printf("found %d rules\n", len(rules))
 
 	for _, rr := range p.Rules {
 		r := rulesMap[rr.RuleID]
