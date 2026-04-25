@@ -22,7 +22,6 @@ func (s *Service) FindAll(ctx context.Context) ([]WebApp, error) {
 
 func (s *Service) Insert(ctx context.Context, app WebApp) (primitive.ObjectID, error) {
 	id, err := s.repository.Insert(ctx, app)
-	// TODO а если не primitive
 	if err != nil {
 		return primitive.NilObjectID, err
 	}

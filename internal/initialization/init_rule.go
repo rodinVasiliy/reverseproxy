@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	actionDoc "reverseproxy/internal/domain/action"
-	rule "reverseproxy/internal/domain/rule"
-	action "reverseproxy/internal/waf/action"
+	"reverseproxy/internal/domain/rule"
+	"reverseproxy/internal/waf/action"
 	parsedrequest "reverseproxy/internal/waf/parsed_request"
 )
 
 var (
-	GEO_RULE_NAME    = "Block by Geo IP"
-	UA_RULE_NAME     = "Block By UA"
-	BITRIX_RULE_NAME = "Block Bitrix Access"
+	GeoRuleName    = "Block by Geo IP"
+	UaRuleName     = "Block By UA"
+	BitrixRuleName = "Block Bitrix Access"
 )
 
 func getDefaultRules(as *actionDoc.Service) ([]rule.Rule, error) {
@@ -48,19 +48,19 @@ func getDefaultRules(as *actionDoc.Service) ([]rule.Rule, error) {
 
 	blockByGeoRule := rule.Rule{
 		Enabled: true,
-		Name:    GEO_RULE_NAME,
+		Name:    GeoRuleName,
 		Expr:    *geoRuleDoc,
 		Actions: logAndBlockActionIds,
 	}
 	blockByUARule := rule.Rule{
 		Enabled: true,
-		Name:    UA_RULE_NAME,
+		Name:    UaRuleName,
 		Expr:    *blockByUADoc,
 		Actions: logAndBlockActionIds,
 	}
 	blockBitrixRule := rule.Rule{
 		Enabled: true,
-		Name:    BITRIX_RULE_NAME,
+		Name:    BitrixRuleName,
 		Expr:    *blockBitrixDoc,
 		Actions: logAndBlockAndSendToBlActionIds,
 	}
@@ -70,16 +70,16 @@ func getDefaultRules(as *actionDoc.Service) ([]rule.Rule, error) {
 }
 
 func loadRulesToDB(rs *rule.Service, rules []rule.Rule) error {
-	for _, rule := range rules {
-		_, err := rs.Insert(context.Background(), rule)
+	for _, r := range rules {
+		_, err := rs.Insert(context.Background(), r)
 		if err != nil {
-			return fmt.Errorf("failed to insert rule %s :%w", rule.Name, err)
+			return fmt.Errorf("failed to insert rule %s :%w", r.Name, err)
 		}
 	}
 	return nil
 }
 
-// дефолтные правила(именно их логическая часть)
+// Дефолтные правила(именно их логическая часть)
 func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		IsNot:                false,

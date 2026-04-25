@@ -8,7 +8,7 @@ import (
 )
 
 type Expr interface {
-	Match(requestMap map[string]string) bool
+	Match(requestMap map[string]string) (bool, error)
 }
 
 type MatchType int
@@ -52,13 +52,13 @@ func MatchTypeFromString(nodeType string) MatchType {
 	}
 }
 
-type Condition struct { // реализовывыает Expr
+type Condition struct { // Реализовывает Expr
 	IsNot                bool
 	MatchType            MatchType
-	RequestParameterType string         // ip или UA, или host и т.д.
-	Raw                  string         // исходное значение из конфигурации
-	inVals               []string       // для MatchIn, не будет сериализоваться, нужна инициализация, чтобы поле появилось
-	regex                *regexp.Regexp // для MatchRegex, не будет сериализоваться, нужна инициализация, чтобы поле появилось
+	RequestParameterType string         // IP или UA, или host и т.д.
+	Raw                  string         // Исходное значение из конфигурации
+	inVals               []string       // Для MatchIn, не будет сериализоваться, нужна инициализация, чтобы поле появилось
+	regex                *regexp.Regexp // Для MatchRegex, не будет сериализоваться, нужна инициализация, чтобы поле появилось
 }
 
 func (c *Condition) Init() error {
@@ -71,14 +71,24 @@ func (c *Condition) Init() error {
 			return err
 		}
 		c.regex = re
+	default:
+		return fmt.Errorf("unknown condition type: %s", c.MatchType)
 	}
 	return nil
 }
 
-// Проверка
-func (c *Condition) Match(requstMap map[string]string) bool {
-	c.Init()
-	value := requstMap[c.RequestParameterType]
+// Match Проверяет запрос на совпадение правилу
+func (c *Condition) Match(requestMap map[string]string) (bool, error) {
+	err := c.Init()
+	if err != nil {
+		return false, err
+	}
+
+	// TODO а что, если нет значения?
+	value, ok := requestMap[c.RequestParameterType]
+	if !ok {
+		return false, nil
+	}
 	result := false
 	switch c.MatchType {
 	case MatchEquals:
@@ -98,33 +108,39 @@ func (c *Condition) Match(requstMap map[string]string) bool {
 		}
 	case MatchRegex:
 		result = c.regex.MatchString(value)
+	default:
+		return false, fmt.Errorf("unknown condition type: %s", c.MatchType)
 	}
 	if c.IsNot {
-		return !result
+		return !result, nil
 	}
-	return result
+	return result, nil
 }
 
 type AlwaysTrueCondition struct {
 }
 
-func (aTrCond *AlwaysTrueCondition) Match(requestMap map[string]string) bool {
-	return true
+func (aTrCond *AlwaysTrueCondition) Match(requestMap map[string]string) (bool, error) {
+	return true, nil
 }
 
 type Group struct {
 	IsNot    bool
-	Operator OpenandType
-	Children []Expr // здесь могут быть как Condition, так и другие Group
+	Operator OperandType
+	Children []Expr // Может быть как Condition, так и другие Group
 }
 
-func (g *Group) Match(requestMap map[string]string) bool {
+func (g *Group) Match(requestMap map[string]string) (bool, error) {
 	var result bool
 	switch g.Operator {
-	case OpenandAnd:
+	case OperandAnd:
 		result = true
 		for _, child := range g.Children {
-			if !child.Match(requestMap) {
+			ok, err := child.Match(requestMap)
+			if err != nil {
+				return false, err
+			}
+			if !ok {
 				result = false
 				break
 			}
@@ -132,26 +148,21 @@ func (g *Group) Match(requestMap map[string]string) bool {
 	case OperandOr:
 		result = false
 		for _, child := range g.Children {
-			if child.Match(requestMap) {
+			ok, err := child.Match(requestMap)
+			if err != nil {
+				return false, err
+			}
+			if ok {
 				result = true
 				break
 			}
 		}
-	case OpenandNot:
-		result = true
-		for _, child := range g.Children {
-			if !child.Match(requestMap) {
-				result = false
-				break
-			}
-		}
-		result = !result
 	default:
 		panic(fmt.Sprintf("unsupported operator: %d", g.Operator))
 	}
 
 	if g.IsNot {
-		return !result
+		return !result, nil
 	}
-	return result
+	return result, nil
 }

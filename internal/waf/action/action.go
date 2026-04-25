@@ -5,45 +5,95 @@ import (
 	bl "reverseproxy/internal/infrastructure/config/bl"
 	parsedRequest "reverseproxy/internal/waf/parsed_request"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
 	LogToDbActionName      = "Log to DB"
-	BlockRequestActionName = "Block Requst"
+	BlockRequestActionName = "Block Request"
 	SendToBlActionName     = "Send to BL"
 )
 
-type Params struct {
-	Rule string                       // название правила, под которое запрос попал
-	PR   *parsedRequest.ParsedRequest // сам запрос
+type Action interface {
+	Execute(context *Context) Effect
 }
 
-type Logic interface {
-	Do(ap *Params) error
+type Context struct {
+	Request *parsedRequest.ParsedRequest
+	RuleId  primitive.ObjectID
 }
+
+/////////////////////////// Реализации ///////////////////////////
 
 type LogToDBAction struct {
 	Logger *log.Logger
 }
 
-func (a *LogToDBAction) Do(ap *Params) error {
-	a.Logger.Printf("IP=%s Rule=%s", ap.PR.IP, ap.Rule)
-	return nil
+func (a *LogToDBAction) Execute(ctx *Context) Effect {
+	return Effect{
+		Logs: []LogEntry{
+			{
+				Message: "request matched rule",
+				Fields: map[string]string{
+					"ip":   ctx.Request.IP.String(),
+					"rule": ctx.RuleId.Hex(),
+				},
+			},
+		},
+	}
 }
 
 type SendToBLAction struct {
-	BlackList  bl.Blacklist
 	defaultTtl time.Duration
 }
 
-func (a *SendToBLAction) Do(ap *Params) error {
-	return a.BlackList.Add(ap.PR.IP.String(), a.defaultTtl)
+func (a *SendToBLAction) Execute(ctx *Context) Effect {
+	return Effect{
+		AddToBL: &BLRequest{
+			IP:  ctx.Request.IP.String(),
+			TTL: a.defaultTtl,
+		},
+	}
 }
 
 type BlockRequestAction struct {
 }
 
-// это просто индикатор того, что запрос нужно заблокировать
-func (a *BlockRequestAction) Do(ap *Params) error {
+func (a *BlockRequestAction) Execute(ctx *Context) Effect {
+	return Effect{
+		Block: true,
+	}
+}
+
+func ExecuteActions(actions []Action, ctx *Context) Effect {
+	var result Effect
+	for _, action := range actions {
+		eff := action.Execute(ctx)
+
+		if eff.Block {
+			result.Block = true
+		}
+
+		result.Logs = append(result.Logs, eff.Logs...)
+
+		if eff.AddToBL != nil {
+			result.AddToBL = eff.AddToBL
+		}
+	}
+	return result
+}
+
+func ApplyEffects(eff Effect, logger *log.Logger, bl *bl.RedisBL) error {
+	for _, logEntry := range eff.Logs {
+		logger.Println(logEntry.Message, logEntry.Fields)
+	}
+
+	if eff.AddToBL != nil {
+		err := bl.Add(eff.AddToBL.IP, eff.AddToBL.TTL)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

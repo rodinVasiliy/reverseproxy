@@ -5,10 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	appSSLService "reverseproxy/internal/domain/app/ssl"
+	appSSLService "reverseproxy/internal/app/ssl"
 	"reverseproxy/internal/domain/ssl"
 	"reverseproxy/internal/dto"
+	ssl2 "reverseproxy/internal/dto/ssl"
 	"reverseproxy/internal/httpx"
+	"reverseproxy/internal/mapper"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,9 +39,9 @@ func getSSLConfigs(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		sslConfigurationDTOS := make([]dto.SSLConfigurationDTO, 0, len(sslConfigs))
+		sslConfigurationDTOS := make([]ssl2.SSLConfigurationDTO, 0, len(sslConfigs))
 		for _, sslConfig := range sslConfigs {
-			sslConfigDTO := dto.ToSSLConfigDTO(sslConfig)
+			sslConfigDTO := mapper.ToSSLConfigDTO(sslConfig)
 			sslConfigurationDTOS = append(sslConfigurationDTOS, *sslConfigDTO)
 		}
 		c.JSON(200, sslConfigurationDTOS)
@@ -59,7 +61,7 @@ func getSSLConfigByID(s *ssl.Service) gin.HandlerFunc {
 			log.Printf("failed to find ssl config by id: %v", err)
 			httpx.InternalError(c)
 		}
-		sslConfigDTO := dto.ToSSLConfigDTO(*sslConfig)
+		sslConfigDTO := mapper.ToSSLConfigDTO(*sslConfig)
 		c.JSON(200, sslConfigDTO)
 	}
 }
@@ -109,7 +111,7 @@ func deleteSSLConfig(s *ssl.Service, as *appSSLService.AppSSLService) gin.Handle
 
 func createSSLConfig(s *ssl.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var sslDTO dto.SSLConfigurationDTO
+		var sslDTO ssl2.SSLConfigurationDTO
 		if err := c.ShouldBindJSON(&sslDTO); err != nil {
 			log.Println("invalid json body: ", err)
 			httpx.BadRequest(c, "invalid json body")
@@ -127,7 +129,7 @@ func createSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		sslConfig, err := dto.DTOToSSLConfig(sslDTO)
+		sslConfig, err := mapper.DTOToSSLConfig(sslDTO)
 		if err != nil {
 			log.Println("failed to convert DTO to SSL Config: ", err)
 			httpx.BadRequest(c, err.Error())
@@ -152,7 +154,7 @@ func updateSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		var sslDTO dto.SSLConfigurationDTO
+		var sslDTO ssl2.SSLConfigurationDTO
 		if err = c.ShouldBindJSON(&sslDTO); err != nil {
 			httpx.BadRequest(c, "invalid json")
 			return
@@ -168,7 +170,7 @@ func updateSSLConfig(s *ssl.Service) gin.HandlerFunc {
 			return
 		}
 
-		sslConfig, err := dto.DTOToSSLConfig(sslDTO)
+		sslConfig, err := mapper.DTOToSSLConfig(sslDTO)
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
 			return

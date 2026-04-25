@@ -28,3 +28,7 @@ func (s *Service) FindByIds(ctx context.Context, ids []primitive.ObjectID) ([]Ac
 	filter := bson.M{"_id": bson.M{"$in": ids}}
 	return s.repository.FindMany(ctx, filter)
 }
+
+func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*ActionDoc, error) {
+	return s.repository.FindById(ctx, id)
+}

@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/http"
 	geo "reverseproxy/internal/infrastructure/config/geo"
-	utils "reverseproxy/internal/utils"
+	"reverseproxy/internal/utils"
 )
 
 type ParsedRequest struct {
@@ -18,7 +18,7 @@ type ParsedRequest struct {
 	Cookies     []*http.Cookie
 }
 
-func ParseRequest(r *http.Request) *ParsedRequest {
+func NewParsedRequest(r *http.Request) *ParsedRequest {
 	var countryCode string
 	ip := utils.GetIpFromRequest(r)
 
@@ -43,7 +43,7 @@ func (rp *ParsedRequest) ToMap() map[string]string {
 		HOST:         rp.Host,
 		PATH:         rp.Path,
 		URI:          rp.Uri,
-		rp.Method:    rp.Method,
+		METHOD:       rp.Method,
 		UA:           rp.UA,
 		COUNTRY_CODE: rp.CountryCode,
 	}

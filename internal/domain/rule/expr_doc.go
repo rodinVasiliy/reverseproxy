@@ -2,20 +2,21 @@ package rule
 
 import (
 	"fmt"
+	"log"
 )
 
 type ExprDoc struct {
 	NodeType string    `bson:"nodeType"`           // "condition" | "group"
-	IsNot    bool      `bson:"isNot"`              // если выставлено - значит при true вернет false и наоборот
+	IsNot    bool      `bson:"isNot"`              // Если выставлено - значит при true вернет false и наоборот
 	Operator string    `bson:"operator,omitempty"` //
-	Children []ExprDoc `bson:"children,omitempty"` // если группа
+	Children []ExprDoc `bson:"children,omitempty"` // Если группа
 	Match    string    `bson:"match,omitempty"`    // equals/in/regex
-	Field    string    `bson:"field,omitempty"`    // поле которое будет проверяться, например "ua"
-	Raw      string    `bson:"value"`              // значений на которое будет матчится параметр запроса
+	Field    string    `bson:"field,omitempty"`    // Поле которое будет проверяться, например "ua"
+	Raw      string    `bson:"value"`              // Значений на которое будет матчится параметр запроса
 }
 
-// преобразовываем expression в expressionDoc, чтобы хранить его в базе
-func BuildExpr(doc ExprDoc) Expr {
+// BuildExpr Преобразовывает expressionDoc в Expression
+func BuildExpr(doc ExprDoc) (Expr, error) {
 	switch doc.NodeType {
 	case "condition":
 		return &Condition{
@@ -23,19 +24,27 @@ func BuildExpr(doc ExprDoc) Expr {
 			MatchType:            MatchTypeFromString(doc.Match),
 			RequestParameterType: doc.Field,
 			Raw:                  doc.Raw,
-		}
+		}, nil
 	case "group":
 		children := make([]Expr, 0, len(doc.Children))
 		for _, child := range doc.Children {
-			children = append(children, BuildExpr(child))
+			child, err := BuildExpr(child)
+			if err != nil {
+				return nil, err
+			}
+			children = append(children, child)
+		}
+		op, err := OperatorFromString(doc.Operator)
+		if err != nil {
+			return nil, err
 		}
 		return &Group{
-			Operator: OperatorFromString(doc.Operator),
+			Operator: op,
 			Children: children,
-		}
+		}, nil
 	default:
-		fmt.Printf("unknown node type %s", doc.NodeType)
-		return nil
+		log.Printf("unknown node type in buildExpr function: %s", doc.NodeType)
+		return nil, fmt.Errorf("unknown node type")
 	}
 }
 
@@ -55,7 +64,10 @@ func ExprToDoc(expr Expr) (ExprDoc, error) {
 		}, nil
 
 	case *Group:
-		op := e.Operator.String()
+		op, err := e.Operator.String()
+		if err != nil {
+			return ExprDoc{}, err
+		}
 		if op == "unknown" {
 			return ExprDoc{}, fmt.Errorf("unknown Operator: %v", e.Operator)
 		}

@@ -13,8 +13,11 @@ type Rule struct {
 }
 
 // Match Возвращает true, если запрос попал под правило, false - иначе
-func (rule *Rule) Match(requestMap map[string]string) bool {
-	Expr := BuildExpr(rule.Expr)
+func (rule *Rule) Match(requestMap map[string]string) (bool, error) {
+	Expr, err := BuildExpr(rule.Expr)
+	if err != nil {
+		return false, err
+	}
 	return Expr.Match(requestMap)
 }
 

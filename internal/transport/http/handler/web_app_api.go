@@ -3,12 +3,13 @@ package handler
 import (
 	"errors"
 	"log"
-	webapp2 "reverseproxy/internal/domain/app/webapp"
-	webapp "reverseproxy/internal/domain/webapp"
-	dto "reverseproxy/internal/dto"
-	webappDto "reverseproxy/internal/dto"
+	appWebapp "reverseproxy/internal/app/webapp"
+	"reverseproxy/internal/domain/webapp"
+	"reverseproxy/internal/dto"
+	webappDto "reverseproxy/internal/dto/webapp"
 	"reverseproxy/internal/httpx"
 	mongorepository "reverseproxy/internal/infrastructure/mongo"
+	"reverseproxy/internal/mapper"
 	manager "reverseproxy/internal/waf/proxy"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, app *webapp2.AppWebappService, manager *manager.Manager) {
+func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, app *appWebapp.AppWebappService, manager *manager.Manager) {
 	g := r.Group("/webapps")
 	{
 		g.GET("", getWebApps(app))
@@ -27,7 +28,7 @@ func RegisterWebAppRoutes(r *gin.RouterGroup, s *webapp.Service, app *webapp2.Ap
 	}
 }
 
-func getWebApps(s *webapp2.AppWebappService) gin.HandlerFunc {
+func getWebApps(s *appWebapp.AppWebappService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apps, err := s.List(c.Request.Context())
 		if err != nil {
@@ -54,7 +55,7 @@ func getWebApp(s *webapp.Service) gin.HandlerFunc {
 			httpx.InternalError(c)
 		}
 
-		wDto := dto.WebAppToDTO(*w)
+		wDto := mapper.WebappToDto(*w)
 		c.JSON(200, wDto)
 	}
 
@@ -62,7 +63,7 @@ func getWebApp(s *webapp.Service) gin.HandlerFunc {
 
 func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var webAppDTO webappDto.WebAppDTO
+		var webAppDTO webappDto.WebappDto
 		if err := c.ShouldBindJSON(&webAppDTO); err != nil {
 			log.Printf("invalid json:%s", webAppDTO.String())
 			httpx.BadRequest(c, "invalid json")
@@ -75,7 +76,7 @@ func createWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			return
 		}
 
-		wa, err := webappDto.DTOToWebApp(webAppDTO)
+		wa, err := mapper.DtoToWebapp(webAppDTO)
 		if err != nil {
 			log.Printf("failed to convert dto to webapp")
 			httpx.BadRequest(c, err.Error())
@@ -108,7 +109,7 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			return
 		}
 
-		var waDTO webappDto.WebAppDTO
+		var waDTO webappDto.WebappDto
 		if err := c.ShouldBindJSON(&waDTO); err != nil {
 			httpx.BadRequest(c, "invalid json body")
 			return
@@ -119,7 +120,7 @@ func updateWebApp(s *webapp.Service, manager *manager.Manager) gin.HandlerFunc {
 			return
 		}
 
-		wa, err := webappDto.DTOToWebApp(waDTO)
+		wa, err := mapper.DtoToWebapp(waDTO)
 		if err != nil {
 			httpx.BadRequest(c, err.Error())
 			return

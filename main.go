@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	appPolicyService "reverseproxy/internal/app/policy"
+	appSSLService "reverseproxy/internal/app/ssl"
+	appWebapp "reverseproxy/internal/app/webapp"
 	actionDoc "reverseproxy/internal/domain/action"
-	appPolicyService "reverseproxy/internal/domain/app/policy"
-	appSSLService "reverseproxy/internal/domain/app/ssl"
-	appWebAppService "reverseproxy/internal/domain/app/webapp"
 	policy "reverseproxy/internal/domain/policy"
 	rule "reverseproxy/internal/domain/rule"
 	ssl "reverseproxy/internal/domain/ssl"
@@ -22,8 +22,10 @@ import (
 	config "reverseproxy/internal/infrastructure/config/mongo_config"
 	repository "reverseproxy/internal/infrastructure/mongo"
 	"reverseproxy/internal/transport/http/handler"
-	action "reverseproxy/internal/waf/action"
-	check_request "reverseproxy/internal/waf/check_request"
+	wafAction "reverseproxy/internal/waf/action"
+	parsedRequest "reverseproxy/internal/waf/parsed_request"
+	wafPolicy "reverseproxy/internal/waf/policy"
+	wafRule "reverseproxy/internal/waf/rule"
 
 	node "reverseproxy/internal/infrastructure/config/node"
 	initialization "reverseproxy/internal/initialization"
@@ -42,8 +44,8 @@ func getInItFlag() bool {
 }
 
 func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service,
-	webAppService *webapp.Service, appWebappService *appWebAppService.AppWebappService, appSSLService *appSSLService.AppSSLService,
-	appPolicyService *appPolicyService.AppPolicyService, manager *manager.Manager) {
+	webAppService *webapp.Service, appWebappService *appWebapp.AppWebappService, appSSLService *appSSLService.AppSSLService,
+	appPolicyService *appPolicyService.AppPolicyService, ruleService *rule.Service, manager *manager.Manager) {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -55,6 +57,7 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	handler.RegisterPolicyRoutes(api, policyService, appPolicyService)
 	handler.RegisterSSLRoutes(api, sslService, appSSLService)
 	handler.RegisterWebAppRoutes(api, webAppService, appWebappService, manager)
+	handler.RegisterRuleRoutes(api, ruleService)
 
 	// to do ip брать из конфигурационного файла
 	go func() {
@@ -90,6 +93,7 @@ func main() {
 	}
 	// Все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
+
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
@@ -130,8 +134,7 @@ func main() {
 	actionService := actionDoc.NewService(actionRepository)
 
 	// Сами actions, зашитые в код
-	actionRegistry := action.NewActionRegistry(accessLogger, blackList)
-	actionExecutor := action.NewExecutor(actionRegistry)
+	actionRegistry := wafAction.BuildRegistry(accessLogger)
 
 	ruleRepository := repository.NewMongoRepository[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
 	ruleService := rule.NewService(ruleRepository)
@@ -144,9 +147,9 @@ func main() {
 
 	webappRepository := repository.NewMongoRepository[webapp.WebApp](mongoDeps.Client, repository.DB_NAME, repository.WEBAPP_COLLECTION)
 	webappService := webapp.NewService(webappRepository)
-	webappSyncService := appWebAppService.NewWebappSyncService(sslService)
+	webappSyncService := appWebapp.NewWebappSyncService(sslService)
 
-	appWebappService := appWebAppService.NewService(webappService, policyService, sslService)
+	appWebappService := appWebapp.NewService(webappService, policyService, sslService)
 	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService)
 	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
 
@@ -164,7 +167,7 @@ func main() {
 
 	fmt.Println("starting admin api")
 	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
-		appSSLService, appPolicyService, manager)
+		appSSLService, appPolicyService, ruleService, manager)
 
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
@@ -186,6 +189,48 @@ func main() {
 		fmt.Println("Init db not required")
 	}
 
+	actionDocs, err := actionService.FindAll(context.Background())
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to find all actions %s", err)
+		return
+	}
+	actionEngine := &wafAction.ActionEngine{}
+	err = actionEngine.Load(actionDocs, actionRegistry)
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to compile actions %s", err)
+		return
+	}
+
+	rules, err := ruleService.FindAll(context.Background())
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to find all rules %s", err)
+		return
+	}
+	ruleEngine := &wafRule.RuleEngine{}
+	err = ruleEngine.Load(rules, actionEngine)
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to compile rules %s", err)
+		return
+	}
+
+	policies, err := policyService.FindAll(context.Background())
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to find all policies %s", err)
+		return
+	}
+	policyEngine := &wafPolicy.PolicyEngine{}
+	err = policyEngine.Load(policies, ruleEngine, actionEngine)
+	if err != nil {
+		closeAll(blackList, errorLogConfig, accessLogConfig)
+		fmt.Printf("failed to compile policies %s", err)
+		return
+	}
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
 		host := r.Host
@@ -201,7 +246,21 @@ func main() {
 		}
 
 		// Проверяем, нужно ли блокировать запрос
-		isBlock, err := check_request.IsBlock(r, webappService, policyService, ruleService, actionService, actionExecutor)
+		wa, err := webappService.GetWebAppForHost(r.Context(), host)
+		if err != nil {
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			fmt.Printf("failed to find webapp for host %s; host:%s\n", err, host)
+			return
+		}
+		policyId := wa.PolicyId
+		compiledPolicy, ok := policyEngine.Get(policyId)
+		if !ok {
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			fmt.Printf("failed to find compiled policy by id %s\n", err)
+			return
+		}
+		parsedRequest := parsedRequest.NewParsedRequest(r)
+		isBlock, err := compiledPolicy.Evaluate(parsedRequest, accessLogger, blackList)
 		if err != nil {
 			fmt.Printf("failed to check request %s", err)
 			return

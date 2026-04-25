@@ -2,25 +2,51 @@ package action
 
 import (
 	"log"
-	bl "reverseproxy/internal/infrastructure/config/bl"
 	"time"
 )
 
+type Factory func() Action
+
 type Registry struct {
-	actions map[string]Logic
+	factories map[string]Factory
 }
 
-func NewActionRegistry(logger *log.Logger, bl bl.Blacklist) *Registry {
+func NewRegistry() *Registry {
 	return &Registry{
-		actions: map[string]Logic{
-			LogToDbActionName:      &LogToDBAction{Logger: logger},
-			SendToBlActionName:     &SendToBLAction{BlackList: bl, defaultTtl: time.Hour * 24},
-			BlockRequestActionName: &BlockRequestAction{},
-		},
+		factories: make(map[string]Factory),
 	}
 }
 
-func (r *Registry) Get(name string) (Logic, bool) {
-	a, ok := r.actions[name]
-	return a, ok
+func (r *Registry) Register(name string, factory Factory) {
+	r.factories[name] = factory
+}
+
+func (r *Registry) Get(name string) (Action, bool) {
+	f, ok := r.factories[name]
+	if !ok {
+		return nil, false
+	}
+	return f(), true
+}
+
+func BuildRegistry(logger *log.Logger) *Registry {
+	r := NewRegistry()
+
+	r.Register(LogToDbActionName, func() Action {
+		return &LogToDBAction{
+			Logger: logger,
+		}
+	})
+
+	r.Register(SendToBlActionName, func() Action {
+		return &SendToBLAction{
+			defaultTtl: 10 * time.Minute,
+		}
+	})
+
+	r.Register(BlockRequestActionName, func() Action {
+		return &BlockRequestAction{}
+	})
+
+	return r
 }

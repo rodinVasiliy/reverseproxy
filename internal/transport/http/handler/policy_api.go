@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	appPolicy "reverseproxy/internal/domain/app/policy"
+	appPolicy "reverseproxy/internal/app/policy"
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/dto"
 	policyDto "reverseproxy/internal/dto/policy"

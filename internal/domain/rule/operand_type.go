@@ -2,38 +2,32 @@ package rule
 
 import "fmt"
 
-type OpenandType int
+type OperandType int
 
 const (
-	OpenandUnknown OpenandType = -1
-	OpenandAnd     OpenandType = iota
+	OperandUnknown OperandType = -1
+	OperandAnd     OperandType = iota
 	OperandOr
-	OpenandNot
 )
 
-func (op OpenandType) String() string {
+func (op OperandType) String() (string, error) {
 	switch op {
-	case OpenandAnd:
-		return "and"
-	case OpenandNot:
-		return "not"
+	case OperandAnd:
+		return "and", nil
 	case OperandOr:
-		return "or"
+		return "or", nil
 	default:
-		return "unknown"
+		return "", fmt.Errorf("unknown operator: %d", op)
 	}
 }
 
-func OperatorFromString(operator string) OpenandType {
+func OperatorFromString(operator string) (OperandType, error) {
 	switch operator {
 	case "and":
-		return OpenandAnd
+		return OperandAnd, nil
 	case "or":
-		return OperandOr
-	case "not":
-		return OpenandNot
+		return OperandOr, nil
 	default:
-		fmt.Printf("unknown operand type %s", operator)
-		return -1
+		return OperandUnknown, fmt.Errorf("unknown operand type %s", operator)
 	}
 }
