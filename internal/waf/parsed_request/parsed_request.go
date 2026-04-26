@@ -39,13 +39,13 @@ func NewParsedRequest(r *http.Request) *ParsedRequest {
 
 func (rp *ParsedRequest) ToMap() map[string]string {
 	result := map[string]string{
-		IP:           rp.IP.String(),
-		HOST:         rp.Host,
-		PATH:         rp.Path,
-		URI:          rp.Uri,
-		METHOD:       rp.Method,
-		UA:           rp.UA,
-		COUNTRY_CODE: rp.CountryCode,
+		IP:          rp.IP.String(),
+		HOST:        rp.Host,
+		PATH:        rp.Path,
+		URI:         rp.Uri,
+		METHOD:      rp.Method,
+		UA:          rp.UA,
+		CountryCode: rp.CountryCode,
 	}
 	for _, cookie := range rp.Cookies {
 		name := "cookie:" + cookie.Name
@@ -66,4 +66,4 @@ var PATH = "path"
 var URI = "uri"
 var METHOD = "method"
 var UA = "ua"
-var COUNTRY_CODE = "countryCode"
+var CountryCode = "countryCode"

@@ -39,3 +39,29 @@ func (s *Service) Delete(ctx context.Context, entity *Policy) error {
 func (s *Service) Update(ctx context.Context, entity *Policy) error {
 	return s.repository.Update(ctx, entity)
 }
+
+func (s *Service) FindOverrideForRule(ctx context.Context, ruleID primitive.ObjectID) ([]Policy, error) {
+	filter := bson.M{
+		"rules": bson.M{
+			"$elemMatch": bson.M{
+				"ruleId":    ruleID,
+				"actions.0": bson.M{"$exists": true},
+			},
+		},
+	}
+
+	projection := bson.M{
+		"name": 1,
+		"rules": bson.M{
+			"$elemMatch": bson.M{
+				"ruleId": ruleID,
+			},
+		},
+	}
+
+	policies, err := s.repository.FindManyWithProjection(ctx, filter, projection)
+	if err != nil {
+		return nil, err
+	}
+	return policies, nil
+}

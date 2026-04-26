@@ -12,7 +12,7 @@ type ExprDoc struct {
 	Children []ExprDoc `bson:"children,omitempty"` // Если группа
 	Match    string    `bson:"match,omitempty"`    // equals/in/regex
 	Field    string    `bson:"field,omitempty"`    // Поле которое будет проверяться, например "ua"
-	Raw      string    `bson:"value"`              // Значений на которое будет матчится параметр запроса
+	Raw      string    `bson:"value"`              // Значение на которое будет матчится параметр запроса
 }
 
 // BuildExpr Преобразовывает expressionDoc в Expression

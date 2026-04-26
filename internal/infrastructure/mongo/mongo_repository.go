@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var ErrNotFound = errors.New("document not found")
@@ -119,6 +120,27 @@ func (r *MongoRepository[T]) FindMany(ctx context.Context, filter any) ([]T, err
 	var result []T
 	if err := cur.All(ctx, &result); err != nil {
 		return nil, err
+	}
+	if len(result) == 0 {
+		return []T{}, nil
+	}
+	return result, nil
+}
+
+func (r *MongoRepository[T]) FindManyWithProjection(ctx context.Context, filter any, projection any) ([]T, error) {
+	opts := options.Find().SetProjection(projection)
+
+	cur, err := r.Collection().Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+	var result []T
+	if err := cur.All(ctx, &result); err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return []T{}, nil
 	}
 	return result, nil
 }

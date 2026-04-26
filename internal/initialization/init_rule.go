@@ -84,7 +84,7 @@ func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 	cond := rule.Condition{
 		IsNot:                false,
 		MatchType:            rule.MatchNotEquals,
-		RequestParameterType: parsedrequest.COUNTRY_CODE,
+		RequestParameterType: parsedrequest.CountryCode,
 		Raw:                  "RU",
 	}
 	exprDoc, err := rule.ExprToDoc(&cond)

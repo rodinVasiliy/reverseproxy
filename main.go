@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	appPolicyService "reverseproxy/internal/app/policy"
+	appRule "reverseproxy/internal/app/rule"
 	appSSLService "reverseproxy/internal/app/ssl"
 	appWebapp "reverseproxy/internal/app/webapp"
 	actionDoc "reverseproxy/internal/domain/action"
@@ -44,8 +45,9 @@ func getInItFlag() bool {
 }
 
 func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service,
-	webAppService *webapp.Service, appWebappService *appWebapp.AppWebappService, appSSLService *appSSLService.AppSSLService,
-	appPolicyService *appPolicyService.AppPolicyService, ruleService *rule.Service, manager *manager.Manager) {
+	webAppService *webapp.Service, appWebappService *appWebapp.AppWebappService,
+	appSSLService *appSSLService.AppSSLService, appPolicyService *appPolicyService.AppPolicyService,
+	ruleService *rule.Service, appRuleService *appRule.AppRuleService, manager *manager.Manager) {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -57,7 +59,7 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	handler.RegisterPolicyRoutes(api, policyService, appPolicyService)
 	handler.RegisterSSLRoutes(api, sslService, appSSLService)
 	handler.RegisterWebAppRoutes(api, webAppService, appWebappService, manager)
-	handler.RegisterRuleRoutes(api, ruleService)
+	handler.RegisterRuleRoutes(api, ruleService, appRuleService)
 
 	// to do ip брать из конфигурационного файла
 	go func() {
@@ -153,6 +155,8 @@ func main() {
 	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService)
 	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
 
+	appRuleService := appRule.NewAppRuleService(ruleService, actionService, policyService)
+
 	watcher := webapp.NewWatcher(webappRepository, webappSyncService)
 	go watcher.Watch(context.Background())
 
@@ -167,8 +171,9 @@ func main() {
 
 	fmt.Println("starting admin api")
 	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
-		appSSLService, appPolicyService, ruleService, manager)
+		appSSLService, appPolicyService, ruleService, appRuleService, manager)
 
+	////////////////////// Инициализация БД //////////////////////
 	if getInItFlag() {
 		fmt.Println("Initialization database ...")
 		utils.ClearAllCollections(mongoDeps)
@@ -189,6 +194,7 @@ func main() {
 		fmt.Println("Init db not required")
 	}
 
+	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
 		closeAll(blackList, errorLogConfig, accessLogConfig)
