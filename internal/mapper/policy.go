@@ -18,7 +18,7 @@ func ToPolicyListItems(items []p.PolicyListItem) []dto.ListItem {
 	return listItems
 }
 
-func ToPolicyDetail(d *p.PolicyDetail) dto.Detail {
+func ToPolicyDetail(d *p.Detail) dto.Detail {
 	rules := make([]dto.RuleRefView, 0, len(d.Rules))
 
 	for _, r := range d.Rules {

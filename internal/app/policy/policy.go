@@ -58,7 +58,7 @@ func (s *AppPolicyService) List(ctx context.Context) ([]policy.PolicyListItem, e
 	return items, nil
 }
 
-func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID) (*policy.PolicyDetail, error) {
+func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive.ObjectID) (*policy.Detail, error) {
 	p, err := s.policyService.FindById(ctx, id)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive
 		return r.ID
 	})
 
-	var detail policy.PolicyDetail
+	var detail policy.Detail
 	detail.ID = id
 	detail.Name = p.Name
 	detail.WL = p.WL
