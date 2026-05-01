@@ -6,6 +6,7 @@ type RuleDetail struct {
 	ID                 primitive.ObjectID
 	Name               string
 	Enabled            bool
+	Expr               *ExprDoc
 	Actions            []ActionParam
 	PolicyActionParams []PolicyActionParam
 }

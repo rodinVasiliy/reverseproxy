@@ -11,6 +11,7 @@ type Expr interface {
 	Match(requestMap map[string]string) (bool, error)
 }
 
+// MatchType - ==, !-, In, Regex
 type MatchType int
 
 const (

@@ -50,7 +50,7 @@ func getRule(s *appRule.AppRuleService) func(c *gin.Context) {
 			return
 		}
 
-		ruleResponse := mapper.ToPolicyResponse(r)
+		ruleResponse := mapper.ToRuleResponse(r)
 		c.JSON(http.StatusOK, ruleResponse)
 	}
 

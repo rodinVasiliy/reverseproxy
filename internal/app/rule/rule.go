@@ -32,6 +32,7 @@ func (a *AppRuleService) RuleDetailById(ctx context.Context, id primitive.Object
 		ID:                 r.ID,
 		Name:               r.Name,
 		Enabled:            r.Enabled,
+		Expr:               &r.Expr,
 		Actions:            []rule.ActionParam{},
 		PolicyActionParams: []rule.PolicyActionParam{},
 	}

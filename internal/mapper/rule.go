@@ -17,13 +17,13 @@ func ToRuleListItems(rules []rule.Rule) []ruleDto.RuleListItem {
 	return items
 }
 
-func ToPolicyResponse(detail *rule.RuleDetail) *ruleDto.RuleDetailView {
+func ToRuleResponse(detail *rule.RuleDetail) *ruleDto.RuleDetailView {
 	rdv := ruleDto.RuleDetailView{
 		ID:                 detail.ID.Hex(),
 		Name:               detail.Name,
 		Enabled:            detail.Enabled,
-		Actions:            make([]ruleDto.ActionParamView, 0),
-		PolicyActionParams: make([]ruleDto.PolicyActionParamView, 0),
+		Actions:            make([]ruleDto.ActionParamView, 0, len(detail.Actions)),
+		PolicyActionParams: make([]ruleDto.PolicyActionParamView, 0, len(detail.PolicyActionParams)),
 	}
 
 	for _, actionParam := range detail.Actions {
@@ -39,7 +39,7 @@ func ToPolicyResponse(detail *rule.RuleDetail) *ruleDto.RuleDetailView {
 			Name:    policyActionParam.Name,
 			Actions: make([]ruleDto.ActionParamView, 0),
 		}
-		for _, actionParam := range detail.PolicyActionParams {
+		for _, actionParam := range detail.Actions {
 			papv.Actions = append(papv.Actions, ruleDto.ActionParamView{
 				ID:   actionParam.ID.Hex(),
 				Name: actionParam.Name,
@@ -48,5 +48,25 @@ func ToPolicyResponse(detail *rule.RuleDetail) *ruleDto.RuleDetailView {
 		rdv.PolicyActionParams = append(rdv.PolicyActionParams, papv)
 	}
 
+	exprView := buildExprView(*detail.Expr)
+	rdv.ExprView = exprView
+
 	return &rdv
+}
+
+func buildExprView(doc rule.ExprDoc) ruleDto.ExprView {
+	exprView := ruleDto.ExprView{
+		NodeType: doc.NodeType,
+		IsNot:    doc.IsNot,
+		Operator: doc.Operator,
+		Match:    doc.Match,
+		Field:    doc.Field,
+		Raw:      doc.Raw,
+	}
+
+	for _, child := range doc.Children {
+		exprView.Children = append(exprView.Children, buildExprView(child))
+	}
+
+	return exprView
 }
