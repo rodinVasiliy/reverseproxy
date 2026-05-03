@@ -17,6 +17,7 @@ func RegisterRuleRoutes(r *gin.RouterGroup, s *rule.Service, as *appRule.AppRule
 	{
 		g.GET("", getRules(s))
 		g.GET("/:id", getRule(as))
+		g.PUT("/:id", editRule(as))
 	}
 }
 
@@ -43,15 +44,20 @@ func getRule(s *appRule.AppRuleService) func(c *gin.Context) {
 			return
 		}
 
-		r, err := s.RuleDetailById(c.Request.Context(), id)
+		ruleResponse, err := s.RuleResponse(c, id)
 		if err != nil {
 			log.Printf("failed to fetch rule: %v", err)
 			httpx.InternalError(c)
 			return
 		}
 
-		ruleResponse := mapper.ToRuleResponse(r)
 		c.JSON(http.StatusOK, ruleResponse)
 	}
 
+}
+
+func editRule(s *appRule.AppRuleService) func(c *gin.Context) {
+	return func(c *gin.Context) {
+
+	}
 }

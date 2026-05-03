@@ -5,6 +5,7 @@ import (
 	"reverseproxy/internal/domain/action"
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
+	ruleDto "reverseproxy/internal/dto/rule"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -75,6 +76,29 @@ func (a *AppRuleService) RuleDetailById(ctx context.Context, id primitive.Object
 	}
 
 	return rd, nil
+}
+
+func (a *AppRuleService) RuleResponse(ctx context.Context, id primitive.ObjectID) (*ruleDto.RuleDetailResponse, error) {
+	ruleDetail, err := a.RuleDetailById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	actions, err := a.actionService.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	policies, err := a.policyService.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ruleResponse, err := ruleDto.BuildRuleResponse(ruleDetail, actions, policies)
+	if err != nil {
+		return nil, err
+	}
+	return ruleResponse, nil
 }
 
 func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
