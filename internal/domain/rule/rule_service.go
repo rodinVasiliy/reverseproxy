@@ -26,3 +26,7 @@ func (s *Service) Insert(ctx context.Context, rule Rule) (primitive.ObjectID, er
 func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*Rule, error) {
 	return s.repository.FindById(ctx, id)
 }
+
+func (s *Service) Update(ctx context.Context, rule *Rule) error {
+	return s.repository.Update(ctx, rule)
+}

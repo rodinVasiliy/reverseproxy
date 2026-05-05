@@ -108,3 +108,32 @@ func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
 	}
 	return result
 }
+
+func (a *AppRuleService) AddOverrideToPolicy(ctx context.Context, policyId primitive.ObjectID,
+	ruleId primitive.ObjectID, actionIDs []primitive.ObjectID) error {
+	p, err := a.policyService.FindById(ctx, policyId)
+	if err != nil {
+		return err
+	}
+
+	isExist := false
+	for _, ruleRef := range p.Rules {
+		if ruleRef.RuleID == ruleId {
+			ruleRef.Actions = actionIDs
+			isExist = true
+		}
+	}
+	if !isExist {
+		p.Rules = append(p.Rules, policy.RuleRef{
+			RuleID:  ruleId,
+			Actions: actionIDs,
+		})
+	}
+
+	err = a.policyService.Update(ctx, p)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
