@@ -93,7 +93,7 @@ func ToRuleDetailView(detail *rule.RuleDetail) *RuleDetailView {
 			Name:    policyActionParam.Name,
 			Actions: make([]ActionParamView, 0),
 		}
-		for _, actionParam := range detail.Actions {
+		for _, actionParam := range policyActionParam.Actions {
 			papv.Actions = append(papv.Actions, ActionParamView{
 				ID:   actionParam.ID.Hex(),
 				Name: actionParam.Name,
