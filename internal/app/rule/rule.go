@@ -109,7 +109,7 @@ func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
 	return result
 }
 
-func (a *AppRuleService) AddOverrideToPolicy(ctx context.Context, policyId primitive.ObjectID,
+func (a *AppRuleService) SyncOverrideToPolicy(ctx context.Context, policyId primitive.ObjectID,
 	ruleId primitive.ObjectID, actionIDs []primitive.ObjectID) error {
 	p, err := a.policyService.FindById(ctx, policyId)
 	if err != nil {
@@ -136,4 +136,64 @@ func (a *AppRuleService) AddOverrideToPolicy(ctx context.Context, policyId primi
 	}
 
 	return nil
+}
+
+func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *ruleDto.RuleDto) error {
+	r.Name = dto.Name
+	r.Enabled = dto.Enabled
+	r.Actions = make([]primitive.ObjectID, 0, len(dto.Actions))
+	for _, action := range dto.Actions {
+		id, err := primitive.ObjectIDFromHex(action)
+		if err != nil {
+			return err
+		}
+		r.Actions = append(r.Actions, id)
+	}
+
+	for i, policyId := range dto.Overrides {
+		pId, err := primitive.ObjectIDFromHex(policyId.ID)
+		if err != nil {
+			return err
+		}
+		actionIDs := make([]primitive.ObjectID, 0, len(dto.Overrides[i].Actions))
+		for _, action := range dto.Overrides[i].Actions {
+			id, err := primitive.ObjectIDFromHex(action)
+			if err != nil {
+				return err
+			}
+			actionIDs = append(actionIDs, id)
+		}
+		err = a.SyncOverrideToPolicy(ctx, pId, r.ID, actionIDs)
+		if err != nil {
+			return err
+		}
+	}
+
+	exp := fillExprDoc(dto.Expression)
+	r.Expr = exp
+
+	err := a.ruleService.Update(ctx, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func fillExprDoc(exprDto ruleDto.ExprDto) rule.ExprDoc {
+	exp := rule.ExprDoc{
+		NodeType: exprDto.NodeType,
+		IsNot:    exprDto.IsNot,
+		Operator: exprDto.Operator,
+		Match:    exprDto.Match,
+		Field:    exprDto.Field,
+		Raw:      exprDto.Value,
+		Children: make([]rule.ExprDoc, 0, len(exprDto.Children)),
+	}
+
+	for _, child := range exprDto.Children {
+		exp.Children = append(exp.Children, fillExprDoc(child))
+	}
+
+	return exp
 }

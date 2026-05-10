@@ -81,45 +81,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			return
 		}
 
-		r.Name = dto.Name
-		r.Enabled = dto.Enabled
-		r.Actions = make([]primitive.ObjectID, 0, len(dto.Actions))
-		for _, action := range dto.Actions {
-			id, err := primitive.ObjectIDFromHex(action)
-			if err != nil {
-				log.Printf("failed to parse id: %v", err)
-				httpx.BadRequest(c, "invalid action id")
-				return
-			}
-			r.Actions = append(r.Actions, id)
-		}
-
-		for i, policyId := range dto.Overrides {
-			pId, err := primitive.ObjectIDFromHex(policyId.ID)
-			if err != nil {
-				log.Printf("failed to parse id: %v", err)
-				httpx.BadRequest(c, "invalid policy ID")
-				return
-			}
-			actionIDs := make([]primitive.ObjectID, 0, len(dto.Overrides[i].Actions))
-			for _, action := range dto.Overrides[i].Actions {
-				id, err := primitive.ObjectIDFromHex(action)
-				if err != nil {
-					log.Printf("failed to parse id: %v", err)
-					httpx.BadRequest(c, "invalid action id")
-					return
-				}
-				actionIDs = append(actionIDs, id)
-			}
-			err = as.AddOverrideToPolicy(c, pId, r.ID, actionIDs)
-			if err != nil {
-				log.Printf("failed to add override to policy: %v", err)
-				httpx.InternalError(c)
-				return
-			}
-		}
-
-		err = s.Update(c, r)
+		err = as.UpdateRule(c, r, &dto)
 		if err != nil {
 			log.Printf("failed to update rule: %v", err)
 			httpx.InternalError(c)
