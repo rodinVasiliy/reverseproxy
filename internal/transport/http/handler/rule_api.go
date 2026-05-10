@@ -94,15 +94,15 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			r.Actions = append(r.Actions, id)
 		}
 
-		for _, policyId := range dto.Overrides {
+		for i, policyId := range dto.Overrides {
 			pId, err := primitive.ObjectIDFromHex(policyId.ID)
 			if err != nil {
 				log.Printf("failed to parse id: %v", err)
 				httpx.BadRequest(c, "invalid policy ID")
 				return
 			}
-			actionIDs := make([]primitive.ObjectID, 0, len(dto.Actions))
-			for _, action := range dto.Actions {
+			actionIDs := make([]primitive.ObjectID, 0, len(dto.Overrides[i].Actions))
+			for _, action := range dto.Overrides[i].Actions {
 				id, err := primitive.ObjectIDFromHex(action)
 				if err != nil {
 					log.Printf("failed to parse id: %v", err)

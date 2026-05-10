@@ -119,10 +119,8 @@ func (a *AppRuleService) AddOverrideToPolicy(ctx context.Context, policyId primi
 	isExist := false // Есть ли уже для правила с ruleId какой-либо Override
 	for i, ruleRef := range p.Rules {
 		if ruleRef.RuleID == ruleId {
-			ruleRef.Actions = actionIDs // перезаписываем Overrides
-			isExist = true              // больше не нужен поиск
-			p.Rules[i] = ruleRef
-			break
+			p.Rules[i].Actions = actionIDs
+			isExist = true
 		}
 	}
 	if !isExist { // Если не было Override до этого
