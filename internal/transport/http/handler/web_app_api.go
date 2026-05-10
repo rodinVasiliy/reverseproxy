@@ -184,5 +184,4 @@ func handleValidationError(err error, c *gin.Context) {
 	}
 	log.Println("invalid request")
 	httpx.BadRequest(c, "invalid request")
-	return
 }

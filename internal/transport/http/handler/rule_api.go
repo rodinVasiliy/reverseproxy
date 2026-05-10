@@ -111,7 +111,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 				}
 				actionIDs = append(actionIDs, id)
 			}
-			err = as.AddOverrideToPolicy(c, r.ID, pId, actionIDs)
+			err = as.AddOverrideToPolicy(c, pId, r.ID, actionIDs)
 			if err != nil {
 				log.Printf("failed to add override to policy: %v", err)
 				httpx.InternalError(c)
