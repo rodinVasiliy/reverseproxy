@@ -87,7 +87,14 @@ func getGeoRuleExprDoc() (*rule.ExprDoc, error) {
 		RequestParameterType: parsedrequest.CountryCode,
 		Raw:                  "RU",
 	}
-	exprDoc, err := rule.ExprToDoc(&cond)
+	var expr []rule.Expr
+	expr = append(expr, &cond)
+	group := rule.Group{
+		IsNot:    false,
+		Operator: rule.OperandAnd,
+		Children: expr,
+	}
+	exprDoc, err := rule.ExprToDoc(&group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Geo Rule ExprDoc %w", err)
 	}
