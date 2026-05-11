@@ -5,6 +5,7 @@ import (
 	"net/http"
 	appRule "reverseproxy/internal/app/rule"
 	"reverseproxy/internal/domain/rule"
+	"reverseproxy/internal/dto"
 	ruleDto "reverseproxy/internal/dto/rule"
 	"reverseproxy/internal/httpx"
 	"reverseproxy/internal/mapper"
@@ -66,11 +67,17 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			return
 		}
 
-		var dto ruleDto.RuleDto
-		err = c.ShouldBindJSON(&dto)
+		var rDto ruleDto.RuleDto
+		err = c.ShouldBindJSON(&rDto)
 		if err != nil {
 			log.Printf("failed to parse rule: %v", err)
 			httpx.BadRequest(c, "invalid id")
+			return
+		}
+
+		err = dto.Validate.Struct(&rDto)
+		if err != nil {
+			handleValidationError(err, c)
 			return
 		}
 
@@ -81,7 +88,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			return
 		}
 
-		err = as.UpdateRule(c, r, &dto)
+		err = as.UpdateRule(c, r, &rDto)
 		if err != nil {
 			log.Printf("failed to update rule: %v", err)
 			httpx.InternalError(c)

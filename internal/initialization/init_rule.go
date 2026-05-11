@@ -108,7 +108,14 @@ func getBlockByUARuleExprDoc() (*rule.ExprDoc, error) {
 		RequestParameterType: parsedrequest.UA,
 		Raw:                  `^(Mozilla\/5\.0|Opera\/|Chrome\/|Safari\/|Firefox\/)`,
 	}
-	exprDoc, err := rule.ExprToDoc(&cond)
+	var expr []rule.Expr
+	expr = append(expr, &cond)
+	group := rule.Group{
+		IsNot:    false,
+		Operator: rule.OperandAnd,
+		Children: expr,
+	}
+	exprDoc, err := rule.ExprToDoc(&group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Block By UA Rule ExprDoc %w", err)
 	}
@@ -122,7 +129,14 @@ func getBlockBitrixRule() (*rule.ExprDoc, error) {
 		RequestParameterType: parsedrequest.PATH,
 		Raw:                  "/bitrix",
 	}
-	exprDoc, err := rule.ExprToDoc(&cond)
+	var expr []rule.Expr
+	expr = append(expr, &cond)
+	group := rule.Group{
+		IsNot:    false,
+		Operator: rule.OperandAnd,
+		Children: expr,
+	}
+	exprDoc, err := rule.ExprToDoc(&group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Block Bitrix ExprDoc %w", err)
 	}

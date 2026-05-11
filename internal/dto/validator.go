@@ -1,8 +1,10 @@
 package dto
 
 import (
+	"fmt"
 	"net"
 	"regexp"
+	ruleDto "reverseproxy/internal/dto/rule"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -89,6 +91,99 @@ func networkValidator(fl validator.FieldLevel) bool {
 	return err == nil
 }
 
+func validateExprRecursive(
+	sl validator.StructLevel,
+	expr ruleDto.ExprDto,
+	path string,
+) {
+
+	switch expr.NodeType {
+
+	case "condition":
+
+		if expr.Field == "" {
+			sl.ReportError(
+				expr.Field,
+				path+".Field",
+				"Field",
+				"required",
+				"",
+			)
+		}
+
+		if expr.Match == "" {
+			sl.ReportError(
+				expr.Match,
+				path+".Match",
+				"Match",
+				"required",
+				"",
+			)
+		}
+
+		if expr.Value == "" {
+			sl.ReportError(
+				expr.Value,
+				path+".Value",
+				"Value",
+				"required",
+				"",
+			)
+		}
+
+	case "group":
+
+		if expr.Operator != "and" &&
+			expr.Operator != "or" {
+
+			sl.ReportError(
+				expr.Operator,
+				path+".Operator",
+				"Operator",
+				"operator",
+				"",
+			)
+		}
+
+		if len(expr.Children) == 0 {
+			sl.ReportError(
+				expr.Children,
+				path+".Children",
+				"Children",
+				"min",
+				"1",
+			)
+		}
+
+		for i, child := range expr.Children {
+			validateExprRecursive(
+				sl,
+				child,
+				fmt.Sprintf(
+					"%s.Children[%d]",
+					path,
+					i,
+				),
+			)
+		}
+
+	default:
+		sl.ReportError(
+			expr.NodeType,
+			path+".NodeType",
+			"NodeType",
+			"oneof",
+			"condition group",
+		)
+	}
+}
+
+func validateExprStruct(sl validator.StructLevel) {
+	expr := sl.Current().Interface().(ruleDto.ExprDto)
+
+	validateExprRecursive(sl, expr, "Expr")
+}
+
 var Validate *validator.Validate
 
 func init() {
@@ -100,4 +195,5 @@ func init() {
 	Validate.RegisterValidation("upstream", upstreamValidator)
 	Validate.RegisterValidation("host", hostnameValidator)
 	Validate.RegisterValidation("wl", networkValidator)
+	Validate.RegisterStructValidation(validateExprStruct, ruleDto.ExprDto{})
 }
