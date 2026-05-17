@@ -123,14 +123,14 @@ func (a *AppRuleService) SyncOverrideToPolicy(ctx context.Context, policyId prim
 		return err
 	}
 
-	isExist := false // Есть ли уже для правила с ruleId какой-либо Override
+	found := false // Есть ли уже для правила с ruleId какой-либо Override
 	for i, ruleRef := range p.Rules {
 		if ruleRef.RuleID == ruleId {
 			p.Rules[i].Actions = actionIDs
-			isExist = true
+			found = true
 		}
 	}
-	if !isExist { // Если не было Override до этого
+	if !found { // Если не было Override до этого
 		p.Rules = append(p.Rules, policy.RuleRef{
 			RuleID:  ruleId,
 			Actions: actionIDs,

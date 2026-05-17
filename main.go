@@ -47,8 +47,7 @@ func getInItFlag() bool {
 func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service,
 	webAppService *webapp.Service, appWebappService *appWebapp.AppWebappService,
 	appSSLService *appSSLService.AppSSLService, appPolicyService *appPolicyService.AppPolicyService,
-	ruleService *rule.Service, appRuleService *appRule.AppRuleService, ruleEngine *wafRule.RuleEngine, policyEngine *wafPolicy.PolicyEngine,
-	actionEngine *wafAction.ActionEngine, manager *manager.Manager) {
+	ruleService *rule.Service, appRuleService *appRule.AppRuleService, manager *manager.Manager) {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -219,7 +218,7 @@ func main() {
 
 	fmt.Println("starting admin api")
 	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
-		appSSLService, appPolicyService, ruleService, appRuleService, ruleEngine, policyEngine, actionEngine, manager)
+		appSSLService, appPolicyService, ruleService, appRuleService, manager)
 
 	////////////////////// Инициализация БД //////////////////////
 	if getInItFlag() {
