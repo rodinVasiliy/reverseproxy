@@ -47,7 +47,8 @@ func getInItFlag() bool {
 func startAdminAPI(url string, actionService *actionDoc.Service, policyService *policy.Service, sslService *ssl.Service,
 	webAppService *webapp.Service, appWebappService *appWebapp.AppWebappService,
 	appSSLService *appSSLService.AppSSLService, appPolicyService *appPolicyService.AppPolicyService,
-	ruleService *rule.Service, appRuleService *appRule.AppRuleService, manager *manager.Manager) {
+	ruleService *rule.Service, appRuleService *appRule.AppRuleService, ruleEngine *wafRule.RuleEngine, policyEngine *wafPolicy.PolicyEngine,
+	actionEngine *wafAction.ActionEngine, manager *manager.Manager) {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -151,12 +152,6 @@ func main() {
 	webappService := webapp.NewService(webappRepository)
 	webappSyncService := appWebapp.NewWebappSyncService(sslService)
 
-	appWebappService := appWebapp.NewService(webappService, policyService, sslService)
-	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService)
-	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
-
-	appRuleService := appRule.NewAppRuleService(ruleService, actionService, policyService)
-
 	watcher := webapp.NewWatcher(webappRepository, webappSyncService)
 	go watcher.Watch(context.Background())
 
@@ -168,31 +163,6 @@ func main() {
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
-
-	fmt.Println("starting admin api")
-	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
-		appSSLService, appPolicyService, ruleService, appRuleService, manager)
-
-	////////////////////// Инициализация БД //////////////////////
-	if getInItFlag() {
-		fmt.Println("Initialization database ...")
-		utils.ClearAllCollections(mongoDeps)
-		utils.DropOldWebappFiles()
-		err = initialization.InItDB(policyService, actionService, ruleService)
-		if err != nil {
-			fmt.Printf("failed to in it db %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
-			return
-		}
-		err = initialization.NewTestWebApp(policyService, sslService, webappService)
-		if err != nil {
-			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
-			return
-		}
-	} else {
-		fmt.Println("Init db not required")
-	}
 
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
@@ -216,7 +186,9 @@ func main() {
 		return
 	}
 	ruleEngine := &wafRule.RuleEngine{}
-	err = ruleEngine.Load(rules, actionEngine)
+	ruleEngine.SetActionEngine(actionEngine)
+
+	err = ruleEngine.Load(rules)
 	if err != nil {
 		closeAll(blackList, errorLogConfig, accessLogConfig)
 		fmt.Printf("failed to compile rules %s", err)
@@ -230,11 +202,44 @@ func main() {
 		return
 	}
 	policyEngine := &wafPolicy.PolicyEngine{}
-	err = policyEngine.Load(policies, ruleEngine, actionEngine)
+	policyEngine.SetActionEngine(actionEngine)
+	policyEngine.SetRuleEngine(ruleEngine)
+	err = policyEngine.Load(policies)
 	if err != nil {
 		closeAll(blackList, errorLogConfig, accessLogConfig)
 		fmt.Printf("failed to compile policies %s", err)
 		return
+	}
+
+	////////////////////// Application services //////////////////////
+	appWebappService := appWebapp.NewService(webappService, policyService, sslService)
+	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService, policyEngine)
+	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
+	appRuleService := appRule.NewAppRuleService(ruleService, actionService, policyService, ruleEngine, policyEngine)
+
+	fmt.Println("starting admin api")
+	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
+		appSSLService, appPolicyService, ruleService, appRuleService, ruleEngine, policyEngine, actionEngine, manager)
+
+	////////////////////// Инициализация БД //////////////////////
+	if getInItFlag() {
+		fmt.Println("Initialization database ...")
+		utils.ClearAllCollections(mongoDeps)
+		utils.DropOldWebappFiles()
+		err = initialization.InItDB(policyService, actionService, ruleService)
+		if err != nil {
+			fmt.Printf("failed to in it db %s", err)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			return
+		}
+		err = initialization.NewTestWebApp(policyService, sslService, webappService)
+		if err != nil {
+			fmt.Printf("failed to add test webapp %s", err)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			return
+		}
+	} else {
+		fmt.Println("Init db not required")
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

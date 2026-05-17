@@ -6,6 +6,8 @@ import (
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
 	ruleDto "reverseproxy/internal/dto/rule"
+	policyEngine "reverseproxy/internal/waf/policy"
+	engine "reverseproxy/internal/waf/rule"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -14,13 +16,18 @@ type AppRuleService struct {
 	ruleService   *rule.Service
 	actionService *action.Service
 	policyService *policy.Service
+
+	ruleEngine   *engine.RuleEngine
+	policyEngine *policyEngine.PolicyEngine
 }
 
-func NewAppRuleService(rs *rule.Service, as *action.Service, ps *policy.Service) *AppRuleService {
+func NewAppRuleService(rs *rule.Service, as *action.Service, ps *policy.Service, re *engine.RuleEngine, pe *policyEngine.PolicyEngine) *AppRuleService {
 	return &AppRuleService{
 		ruleService:   rs,
 		actionService: as,
 		policyService: ps,
+		ruleEngine:    re,
+		policyEngine:  pe,
 	}
 }
 
@@ -150,8 +157,11 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 		r.Actions = append(r.Actions, id)
 	}
 
+	policyToReCompile := make([]primitive.ObjectID, 0, len(dto.Overrides))
+
 	for i, policyId := range dto.Overrides {
 		pId, err := primitive.ObjectIDFromHex(policyId.ID)
+		policyToReCompile = append(policyToReCompile, pId)
 		if err != nil {
 			return err
 		}
@@ -177,6 +187,24 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 		return err
 	}
 
+	// Рекомпиляция правила
+	err = a.ruleEngine.Update(*r)
+	if err != nil {
+		return err
+	}
+
+	// Рекомпиляция политик
+	for _, id := range policyToReCompile {
+		p, err := a.policyService.FindById(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		err = a.policyEngine.Update(*p)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

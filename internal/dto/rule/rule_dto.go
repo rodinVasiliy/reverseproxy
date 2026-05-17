@@ -5,7 +5,7 @@ type RuleDto struct {
 	Name       string      `json:"name" validate:"required,min=3,max=64"`
 	Enabled    bool        `json:"enabled"`
 	Actions    []string    `json:"actions"`
-	Overrides  []Overrides `json:"overrides"`
+	Overrides  []Overrides `json:"overrides"` // TO DO переименовать в Rules
 	Expression ExprDto     `json:"expr" validate:"required"`
 }
 

@@ -6,6 +6,7 @@ import (
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
 	"reverseproxy/internal/domain/webapp"
+	engine "reverseproxy/internal/waf/policy"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -15,14 +16,17 @@ type AppPolicyService struct {
 	actionService *action.Service
 	ruleService   *rule.Service
 	webappService *webapp.Service
+
+	policyEngine *engine.PolicyEngine
 }
 
-func NewAppPolicyService(p *policy.Service, a *action.Service, r *rule.Service, w *webapp.Service) *AppPolicyService {
+func NewAppPolicyService(p *policy.Service, a *action.Service, r *rule.Service, w *webapp.Service, pe *engine.PolicyEngine) *AppPolicyService {
 	return &AppPolicyService{
 		policyService: p,
 		actionService: a,
 		ruleService:   r,
 		webappService: w,
+		policyEngine:  pe,
 	}
 }
 
@@ -127,6 +131,30 @@ func (s *AppPolicyService) CanDeletePolicy(ctx context.Context, id primitive.Obj
 	if len(webapps) > 0 {
 		return &policy.PolicyInUseError{Webapps: webapps}
 	}
+	return nil
+}
+
+func (s *AppPolicyService) Update(ctx context.Context, ps *policy.Service, policy *policy.Policy) error {
+	err := ps.Update(ctx, policy)
+	if err != nil {
+		return err
+	}
+
+	err = s.policyEngine.Update(*policy)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AppPolicyService) Delete(ctx context.Context, p *policy.Policy, ps *policy.Service) error {
+	err := ps.Delete(ctx, p)
+	if err != nil {
+		return err
+	}
+
+	s.policyEngine.Delete(*p)
 	return nil
 }
 

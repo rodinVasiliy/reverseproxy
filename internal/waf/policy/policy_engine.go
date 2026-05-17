@@ -12,17 +12,27 @@ import (
 type PolicyEngine struct {
 	mu       sync.RWMutex
 	policies map[primitive.ObjectID]*CompiledPolicy
+
+	ruleEngine   *rule.RuleEngine
+	actionEngine *action.ActionEngine
 }
 
-func (pe *PolicyEngine) Load(policies []policy.Policy, ruleEngine *rule.RuleEngine,
-	actionEngine *action.ActionEngine) error {
+func (pe *PolicyEngine) SetRuleEngine(re *rule.RuleEngine) {
+	pe.ruleEngine = re
+}
+
+func (pe *PolicyEngine) SetActionEngine(ae *action.ActionEngine) {
+	pe.actionEngine = ae
+}
+
+func (pe *PolicyEngine) Load(policies []policy.Policy) error {
 	pe.mu.Lock()
 	defer pe.mu.Unlock()
 
 	newPolicies := make(map[primitive.ObjectID]*CompiledPolicy)
 
 	for _, p := range policies {
-		cp, err := CompilePolicy(p, ruleEngine, actionEngine)
+		cp, err := CompilePolicy(p, pe.ruleEngine, pe.actionEngine)
 		if err != nil {
 			return err
 		}
@@ -31,6 +41,13 @@ func (pe *PolicyEngine) Load(policies []policy.Policy, ruleEngine *rule.RuleEngi
 
 	pe.policies = newPolicies
 	return nil
+}
+
+func (pe *PolicyEngine) Delete(p policy.Policy) {
+	pe.mu.Lock()
+	defer pe.mu.Unlock()
+
+	delete(pe.policies, p.ID)
 }
 
 func (pe *PolicyEngine) Get(id primitive.ObjectID) (*CompiledPolicy, bool) {
@@ -42,4 +59,16 @@ func (pe *PolicyEngine) Get(id primitive.ObjectID) (*CompiledPolicy, bool) {
 		return nil, false
 	}
 	return cp, true
+}
+
+func (pe *PolicyEngine) Update(p policy.Policy) error {
+	pe.mu.Lock()
+	defer pe.mu.Unlock()
+
+	cp, err := CompilePolicy(p, pe.ruleEngine, pe.actionEngine)
+	if err != nil {
+		return err
+	}
+	pe.policies[p.ID] = cp
+	return nil
 }

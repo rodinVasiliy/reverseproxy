@@ -21,7 +21,7 @@ func RegisterPolicyRoutes(r *gin.RouterGroup, s *policy.Service, aps *appPolicy.
 		g.GET("", getPolicies(aps))
 		g.GET("/:id", getPolicy(aps))
 		g.DELETE("/:id", deletePolicy(s, aps))
-		g.PUT("/:id", updatePolicy(s))
+		g.PUT("/:id", updatePolicy(s, aps))
 	}
 }
 
@@ -72,7 +72,7 @@ func deletePolicy(s *policy.Service, aps *appPolicy.AppPolicyService) gin.Handle
 			return
 		}
 
-		err = s.Delete(c.Request.Context(), p)
+		err = aps.Delete(c, p, s)
 		if err != nil {
 			log.Printf("failed to delete policy in delete policy api: %v", err)
 			httpx.InternalError(c)
@@ -104,7 +104,7 @@ func getPolicy(aps *appPolicy.AppPolicyService) gin.HandlerFunc {
 	}
 }
 
-func updatePolicy(s *policy.Service) gin.HandlerFunc {
+func updatePolicy(s *policy.Service, as *appPolicy.AppPolicyService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := primitive.ObjectIDFromHex(c.Param("id"))
 		if err != nil {
@@ -127,18 +127,22 @@ func updatePolicy(s *policy.Service) gin.HandlerFunc {
 			return
 		}
 
-		p := &policy.Policy{
-			ID:   id,
-			Name: policyDTO.Name,
-			WL:   policyDTO.WL,
-		}
-
-		err = s.Update(c, p)
+		p, err := s.FindById(c, id)
 		if err != nil {
-			log.Printf("failed to update policy in update policy api: %v", err)
+			log.Printf("failed to find policy by id: %v", err)
 			httpx.InternalError(c)
 			return
 		}
+		p.Name = policyDTO.Name
+		p.WL = policyDTO.WL
+
+		err = as.Update(c, s, p)
+		if err != nil {
+			log.Printf("failed to update policy: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+
 		c.Status(204)
 	}
 
