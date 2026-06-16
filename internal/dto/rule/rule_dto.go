@@ -2,14 +2,15 @@ package rule
 
 // TODO валидацию написать
 type RuleDto struct {
-	Name       string      `json:"name" validate:"required,min=3,max=64"`
-	Enabled    bool        `json:"enabled"`
-	Actions    []string    `json:"actions"`
-	Overrides  []Overrides `json:"overrides"` // TO DO переименовать в Rules
-	Expression ExprDto     `json:"expr" validate:"required"`
+	Name            string            `json:"name" validate:"required,min=3,max=64"`
+	Enabled         bool              `json:"enabled"`                  // Включено ли правило
+	Actions         []string          `json:"actions"`                  // Список действий, которые будут применяться при срабатывании правила
+	Policies        []string          `json:"policies"`                 // Список политик, для которых это правило будет работать
+	PolicyOverrides []PolicyOverrides `json:"overrides"`                // Список переопределений, для политики переопределяется набор действий
+	Expression      ExprDto           `json:"expr" validate:"required"` // Само правило
 }
 
-type Overrides struct {
+type PolicyOverrides struct { // Переопределяет для правила с ID список действий
 	ID      string   `json:"id"`      // policyId
 	Actions []string `json:"actions"` // actionIds
 }

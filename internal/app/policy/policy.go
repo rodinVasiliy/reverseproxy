@@ -91,7 +91,7 @@ func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive
 	detail.WL = p.WL
 	detail.Rules = make([]policy.PolicyRuleDetail, 0, len(rules))
 
-	for _, rr := range p.Rules {
+	for _, rr := range p.RuleOverrides {
 		r := rulesMap[rr.RuleID]
 
 		var actionIDs []primitive.ObjectID

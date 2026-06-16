@@ -9,11 +9,12 @@ import (
 )
 
 type CompiledRule struct {
-	ID      primitive.ObjectID
-	Name    string
-	Enabled bool
-	Expr    rule.Expr       // уже собранный
-	Actions []action.Action // уже резолвленные
+	ID       primitive.ObjectID
+	Name     string
+	Enabled  bool
+	Policies []primitive.ObjectID // Список политик, для которых правило включено
+	Expr     rule.Expr            // уже собранный
+	Actions  []action.Action      // уже резолвленные
 }
 
 func CompileRule(r rule.Rule, ae *action.ActionEngine) (*CompiledRule, error) {
@@ -32,10 +33,11 @@ func CompileRule(r rule.Rule, ae *action.ActionEngine) (*CompiledRule, error) {
 	}
 
 	return &CompiledRule{
-		ID:      r.ID,
-		Name:    r.Name,
-		Enabled: r.Enabled,
-		Expr:    expr,
-		Actions: actions,
+		ID:       r.ID,
+		Name:     r.Name,
+		Enabled:  r.Enabled,
+		Expr:     expr,
+		Actions:  actions,
+		Policies: r.Policies,
 	}, nil
 }

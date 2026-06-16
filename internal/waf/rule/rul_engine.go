@@ -3,6 +3,7 @@ package rule
 import (
 	"reverseproxy/internal/domain/rule"
 	"reverseproxy/internal/waf/action"
+	"slices"
 	"sync"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -56,4 +57,14 @@ func (re *RuleEngine) Update(rule rule.Rule) error {
 	}
 	re.rules[cr.ID] = cr
 	return nil
+}
+
+func (re *RuleEngine) GetRulesByPolicyID(id primitive.ObjectID) []CompiledRule {
+	rules := make([]CompiledRule, 0)
+	for _, value := range re.rules {
+		if slices.Contains(value.Policies, id) {
+			rules = append(rules, *value)
+		}
+	}
+	return rules
 }

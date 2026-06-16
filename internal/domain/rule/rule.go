@@ -5,11 +5,12 @@ import (
 )
 
 type Rule struct {
-	ID      primitive.ObjectID   `bson:"_id,omitempty"`
-	Enabled bool                 `bson:"enabled"` // Включено ли правило
-	Name    string               `bson:"name"`    // Название правила
-	Expr    ExprDoc              `bson:"expr"`    // Набор условий правила(точнее его версия, которая может храниться в базе)
-	Actions []primitive.ObjectID `bson:"actions"` // Список actions(их id)
+	ID       primitive.ObjectID   `bson:"_id,omitempty"`
+	Enabled  bool                 `bson:"enabled"`  // Включено ли правило
+	Name     string               `bson:"name"`     // Название правила
+	Expr     ExprDoc              `bson:"expr"`     // Набор условий правила(точнее его версия, которая может храниться в базе)
+	Actions  []primitive.ObjectID `bson:"actions"`  // Список actions(их id)
+	Policies []primitive.ObjectID `bson:"polocies"` // Список политик, в которых это правило есть
 }
 
 // Match Возвращает true, если запрос попал под правило, false - иначе

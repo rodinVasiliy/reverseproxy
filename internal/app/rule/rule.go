@@ -45,6 +45,7 @@ func (a *AppRuleService) RuleDetailById(ctx context.Context, id primitive.Object
 		PolicyActionParams: []rule.PolicyActionParam{},
 	}
 
+	// Находим для правила Actions, добавляем в RuleDetail имена Actions
 	actions, err := a.actionService.FindAll(ctx)
 	if err != nil {
 		return nil, err
@@ -60,6 +61,17 @@ func (a *AppRuleService) RuleDetailById(ctx context.Context, id primitive.Object
 		})
 	}
 
+	// Находим для правила политики, в которых оно используется и добавляем их ID в RuleDetail
+	policies, err := a.policyService.FindByRuleID(ctx, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	rd.Policies = make([]primitive.ObjectID, 0, len(policies))
+	for _, policy := range policies {
+		rd.Policies = append(rd.Policies, policy.ID)
+	}
+
+	// Находим политики, в которых действия для этого правила переопределены и добавляем их в RuleDetail
 	overrides, err := a.policyService.FindOverrideForRule(ctx, r.ID)
 	if err != nil {
 		return nil, err
@@ -69,10 +81,10 @@ func (a *AppRuleService) RuleDetailById(ctx context.Context, id primitive.Object
 			pap := rule.PolicyActionParam{
 				ID:      p.ID,
 				Name:    p.Name,
-				Actions: make([]rule.ActionParam, 0, len(p.Rules[0].Actions)),
+				Actions: make([]rule.ActionParam, 0, len(p.RuleOverrides[0].Actions)),
 			}
 
-			for _, act := range p.Rules[0].Actions {
+			for _, act := range p.RuleOverrides[0].Actions {
 				pap.Actions = append(pap.Actions, rule.ActionParam{
 					ID:   act,
 					Name: actionsMap[act].Name,
@@ -116,25 +128,29 @@ func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
 	return result
 }
 
-func (a *AppRuleService) SyncOverrideToPolicy(ctx context.Context, policyId primitive.ObjectID,
-	ruleId primitive.ObjectID, actionIDs []primitive.ObjectID) error {
+func (a *AppRuleService) SyncOverrideToPolicy(ctx context.Context, policyId primitive.ObjectID, ruleId primitive.ObjectID,
+	actionIDs []primitive.ObjectID) error {
+	// Работает следующим образом: в политике ищет, есть ли для правила с ruleId переопределение, если есть - меняет в нем список действий на actionIDs
+	// Если нет - в случае, если actionIDs не пустой - создает для политики переопределение, добавляя туда actionIDs
 	p, err := a.policyService.FindById(ctx, policyId)
 	if err != nil {
 		return err
 	}
 
 	found := false // Есть ли уже для правила с ruleId какой-либо Override
-	for i, ruleRef := range p.Rules {
+	for i, ruleRef := range p.RuleOverrides {
 		if ruleRef.RuleID == ruleId {
-			p.Rules[i].Actions = actionIDs
+			p.RuleOverrides[i].Actions = actionIDs
 			found = true
 		}
 	}
 	if !found { // Если не было Override до этого
-		p.Rules = append(p.Rules, policy.RuleRef{
-			RuleID:  ruleId,
-			Actions: actionIDs,
-		})
+		if len(actionIDs) != 0 {
+			p.RuleOverrides = append(p.RuleOverrides, policy.RuleRef{
+				RuleID:  ruleId,
+				Actions: actionIDs,
+			})
+		}
 	}
 
 	err = a.policyService.Update(ctx, p)
@@ -148,6 +164,8 @@ func (a *AppRuleService) SyncOverrideToPolicy(ctx context.Context, policyId prim
 func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *ruleDto.RuleDto) error {
 	r.Name = dto.Name
 	r.Enabled = dto.Enabled
+
+	// String -> primitive.ObjectID
 	r.Actions = make([]primitive.ObjectID, 0, len(dto.Actions))
 	for _, action := range dto.Actions {
 		id, err := primitive.ObjectIDFromHex(action)
@@ -157,16 +175,18 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 		r.Actions = append(r.Actions, id)
 	}
 
-	policyToReCompile := make([]primitive.ObjectID, 0, len(dto.Overrides))
+	// Собираем политики для которых необходима рекомпиляция
+	policyToReCompile := make([]primitive.ObjectID, 0, len(dto.PolicyOverrides))
 
-	for i, policyId := range dto.Overrides {
+	for i, policyId := range dto.PolicyOverrides {
 		pId, err := primitive.ObjectIDFromHex(policyId.ID)
 		policyToReCompile = append(policyToReCompile, pId)
 		if err != nil {
 			return err
 		}
-		actionIDs := make([]primitive.ObjectID, 0, len(dto.Overrides[i].Actions))
-		for _, action := range dto.Overrides[i].Actions {
+
+		actionIDs := make([]primitive.ObjectID, 0, len(dto.PolicyOverrides[i].Actions))
+		for _, action := range dto.PolicyOverrides[i].Actions {
 			id, err := primitive.ObjectIDFromHex(action)
 			if err != nil {
 				return err
@@ -205,6 +225,60 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 			return err
 		}
 	}
+	return nil
+}
+
+func (a *AppRuleService) CreateRule(ctx context.Context, dto *ruleDto.RuleDto) error {
+	var r rule.Rule
+	r.Name = dto.Name
+	r.Enabled = dto.Enabled
+	r.Actions = make([]primitive.ObjectID, 0, len(dto.Actions))
+	for _, actionId := range dto.Actions {
+		id, err := primitive.ObjectIDFromHex(actionId)
+		if err != nil {
+			return err
+		}
+		r.Actions = append(r.Actions, id)
+	}
+
+	// Определяем список политик, для которых будет повторная компиляция
+	policyToReCompileMap := make(map[string][]string)
+	for _, policyId := range dto.Policies {
+		policyToReCompileMap[policyId] = []string{} // Назначаем пустой срез, т.к. для этой политики пока нет Override(но он может быть далее)
+	}
+
+	for _, override := range dto.PolicyOverrides {
+		policyToReCompileMap[override.ID] = override.Actions
+	}
+
+	for key, value := range policyToReCompileMap {
+		policyId, err := primitive.ObjectIDFromHex(key)
+		if err != nil {
+			return err
+		}
+
+		actionIds := make([]primitive.ObjectID, 0, len(value))
+		for _, actionId := range value {
+			id, err := primitive.ObjectIDFromHex(actionId)
+			if err != nil {
+				return err
+			}
+			actionIds = append(actionIds, id)
+		}
+
+		err = a.SyncOverrideToPolicy(ctx, policyId, r.ID, actionIds)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := a.ruleService.Insert(ctx, r)
+	if err != nil {
+		return err
+	}
+
+	// TODO переделать метод SyncOverrideToPolicy
+
 	return nil
 }
 

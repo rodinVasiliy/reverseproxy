@@ -20,6 +20,7 @@ func RegisterRuleRoutes(r *gin.RouterGroup, s *rule.Service, as *appRule.AppRule
 		g.GET("", getRules(s))
 		g.GET("/:id", getRule(as))
 		g.PUT("/:id", editRule(s, as))
+		g.POST("", createRule(as))
 	}
 }
 
@@ -75,6 +76,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			return
 		}
 
+		// Валидация Rule
 		err = dto.Validate.Struct(&rDto)
 		if err != nil {
 			handleValidationError(err, c)
@@ -88,6 +90,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 			return
 		}
 
+		// Обновляем правило, тут же происходит и рекомпиляция правила и связанных с ним политик
 		err = as.UpdateRule(c, r, &rDto)
 		if err != nil {
 			log.Printf("failed to update rule: %v", err)
@@ -96,5 +99,25 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 		}
 
 		c.Status(204)
+	}
+}
+
+func createRule(as *appRule.AppRuleService) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var ruleDto ruleDto.RuleDto
+		err := c.ShouldBindJSON(&ruleDto)
+		if err != nil {
+			log.Printf("failed to parse rule: %v", err)
+			httpx.BadRequest(c, "invalid id")
+			return
+		}
+
+		// Валидация Rule
+		err = dto.Validate.Struct(&ruleDto)
+		if err != nil {
+			handleValidationError(err, c)
+			return
+		}
+
 	}
 }

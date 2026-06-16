@@ -8,6 +8,7 @@ type RuleDetail struct {
 	Enabled            bool
 	Expr               *ExprDoc
 	Actions            []ActionParam
+	Policies           []primitive.ObjectID
 	PolicyActionParams []PolicyActionParam
 }
 

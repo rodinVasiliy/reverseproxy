@@ -65,3 +65,14 @@ func (s *Service) FindOverrideForRule(ctx context.Context, ruleID primitive.Obje
 	}
 	return policies, nil
 }
+
+func (s *Service) FindByRuleID(ctx context.Context, ruleID primitive.ObjectID) ([]Policy, error) {
+	filter := bson.M{
+		"rules": bson.M{"$in": []primitive.ObjectID{ruleID}},
+	}
+	policies, err := s.repository.FindMany(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return policies, nil
+}

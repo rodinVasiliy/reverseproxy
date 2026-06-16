@@ -13,12 +13,13 @@ type RuleDetailResponse struct {
 }
 
 type RuleDetailView struct {
-	ID                 string                  `json:"id"`      // Rule ID
-	Name               string                  `json:"name"`    // Rule Name
-	Enabled            bool                    `json:"enabled"` // Is Rule enabled
-	Actions            []ActionParamView       `json:"actions"`
-	PolicyActionParams []PolicyActionParamView `json:"policyActionParams"`
-	ExprView           ExprView                `json:"expr"`
+	ID                 string                  `json:"id"`
+	Name               string                  `json:"name"`
+	Enabled            bool                    `json:"enabled"`            // Включено ли правило
+	Actions            []ActionParamView       `json:"actions"`            // Список действий для правила
+	Policies           []string                `json:"policies"`           // Список использующихся политик
+	PolicyActionParams []PolicyActionParamView `json:"policyActionParams"` // Список переопределений действий для политик
+	ExprView           ExprView                `json:"expr"`               // Само выражение правила
 }
 
 type ActionParamView struct {
@@ -65,19 +66,29 @@ func BuildRuleResponse(ruleDetail *rule.RuleDetail, actions []action.ActionDoc, 
 	}
 
 	return &RuleDetailResponse{
-		Rule:              *ToRuleDetailView(ruleDetail),
+		Rule:              *ToRuleDetailView(ruleDetail, policies),
 		AvailableActions:  availableActions,
 		AvailablePolicies: availablePolicies,
 	}, nil
 }
 
-func ToRuleDetailView(detail *rule.RuleDetail) *RuleDetailView {
+func ToRuleDetailView(detail *rule.RuleDetail, policies []policy.Policy) *RuleDetailView {
 	rdv := RuleDetailView{
 		ID:                 detail.ID.Hex(),
 		Name:               detail.Name,
 		Enabled:            detail.Enabled,
 		Actions:            make([]ActionParamView, 0, len(detail.Actions)),
 		PolicyActionParams: make([]PolicyActionParamView, 0, len(detail.PolicyActionParams)),
+	}
+
+	rdv.Policies = make([]string, 0, len(detail.Policies))
+	for _, policyId := range detail.Policies {
+		for _, policy := range policies {
+			if policy.ID == policyId {
+				rdv.Policies = append(rdv.Policies, policy.Name)
+				break
+			}
+		}
 	}
 
 	for _, actionParam := range detail.Actions {

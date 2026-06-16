@@ -20,6 +20,7 @@ type CompiledPolicy struct {
 	Rules []PolicyRule
 }
 
+// TODO переделать, чтобы для Rule, где нет переопределения вызывался стандартный набор функций
 func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 	actionEngine *action.ActionEngine) (*CompiledPolicy, error) {
 	compiledPolicy := &CompiledPolicy{
@@ -27,7 +28,27 @@ func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 		Name: p.Name,
 		WL:   p.WL,
 	}
-	for _, ref := range p.Rules {
+
+	// Мапа нужна нам, чтобы не проверять одно правило дважды, например, если правило содержится и в списке p.Rules и в списке p.RuleOverrides
+	ruleMap := make(map[primitive.ObjectID]PolicyRule)
+
+	// Находим скомпилированные правила для нашей политики + заносим их в мапу
+	rules := ruleEngine.GetRulesByPolicyID(p.ID)
+	for _, compiledRule := range rules {
+		policyRule := PolicyRule{
+			Rule:    &compiledRule,
+			Actions: compiledRule.Actions,
+		}
+		ruleMap[compiledRule.ID] = policyRule
+	}
+
+	// Проходим все переопределения для правил, если переопределение не пустое - меняем список actions для правила
+	for _, ref := range p.RuleOverrides {
+		// Если правило не используется(его нет в списке p.Rules) - пропускаем, т.к. его не нужно добавлять в скомпилированную политику
+		if _, ok := ruleMap[ref.RuleID]; !ok {
+			continue
+		}
+
 		baseRule, ok := ruleEngine.Get(ref.RuleID)
 		if !ok {
 			return nil, fmt.Errorf("rule not found: %s", ref.RuleID.Hex())
@@ -36,8 +57,8 @@ func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 		var actions []action.Action
 
 		if len(ref.Actions) == 0 {
-			// используем дефолтные
-			actions = baseRule.Actions
+			// Если переопределений нет - значит уже нет смысла продолжать, так как всё уже добавлено
+			continue
 		} else {
 			// override
 			actions = make([]action.Action, 0, len(ref.Actions))
@@ -48,13 +69,20 @@ func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 				}
 				actions = append(actions, act)
 			}
+			policyRule := PolicyRule{
+				Rule:    baseRule,
+				Actions: actions,
+			}
+			ruleMap[ref.RuleID] = policyRule
 		}
-
-		compiledPolicy.Rules = append(compiledPolicy.Rules, PolicyRule{
-			Rule:    baseRule,
-			Actions: actions,
-		})
 	}
+
+	// Добавляем правила в политику, переопределения учитываются
+	compiledPolicy.Rules = make([]PolicyRule, 0, len(ruleMap))
+	for _, value := range ruleMap {
+		compiledPolicy.Rules = append(compiledPolicy.Rules, value)
+	}
+
 	return compiledPolicy, nil
 }
 
@@ -71,6 +99,7 @@ func checkInList(ip net.IP, list []string) bool {
 	return false
 }
 
+// Проверяем запрос по всем правилам из политики
 func (cp *CompiledPolicy) Evaluate(req *parsedRequest.ParsedRequest, logger *log.Logger, bl *bl.RedisBL) (bool, error) {
 	if checkInList(req.IP, cp.WL) {
 		return false, nil
