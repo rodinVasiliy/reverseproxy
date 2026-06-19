@@ -340,7 +340,7 @@ func getPolicyToReCompile(r *rule.Rule, dto *ruleDto.RuleDto) ([]primitive.Objec
 }
 
 func objectIDSliceFromHexSlice(ids []string) ([]primitive.ObjectID, error) {
-	result := make([]primitive.ObjectID, len(ids), 0)
+	result := make([]primitive.ObjectID, 0, len(ids))
 	for _, id := range ids {
 		objectId, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
