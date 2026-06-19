@@ -137,16 +137,29 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 	r.Name = dto.Name
 	r.Enabled = dto.Enabled
 
-	// String -> primitive.ObjectID
-	r.Actions = make([]primitive.ObjectID, 0, len(dto.Actions))
-	for _, action := range dto.Actions {
-		id, err := primitive.ObjectIDFromHex(action)
+	// String -> primitive.ObjectID: Обновляем список действий
+	actions, err := objectIDSliceFromHexSlice(dto.Actions)
+	if err != nil {
+		return err
+	}
+	r.Actions = actions
+
+	// Обновляем список переопределений
+	for _, policyOverride := range dto.PolicyOverrides {
+		actionsOverride, err := objectIDSliceFromHexSlice(policyOverride.Actions)
 		if err != nil {
 			return err
 		}
-		r.Actions = append(r.Actions, id)
+		policyId, err := primitive.ObjectIDFromHex(policyOverride.ID)
+		if err != nil {
+			return err
+		}
+
+		r.Overrides = append(r.Overrides, rule.Override{
+			PolicyId: policyId,
+			Actions:  actionsOverride,
+		})
 	}
-	log.Println("Actions filled")
 
 	// Собираем политики для которых необходима рекомпиляция
 	policyToReCompile, err := getPolicyToReCompile(r, dto)
