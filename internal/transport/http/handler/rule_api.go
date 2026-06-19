@@ -72,7 +72,7 @@ func editRule(s *rule.Service, as *appRule.AppRuleService) func(c *gin.Context) 
 		err = c.ShouldBindJSON(&rDto)
 		if err != nil {
 			log.Printf("failed to parse rule: %v", err)
-			httpx.BadRequest(c, "invalid id")
+			httpx.BadRequest(c, err.Error())
 			return
 		}
 

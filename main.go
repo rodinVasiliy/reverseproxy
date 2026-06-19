@@ -163,6 +163,27 @@ func main() {
 	}
 	fmt.Println("Waf Config successfully loaded")
 
+	////////////////////// Инициализация БД //////////////////////
+	if getInItFlag() {
+		fmt.Println("Initialization database ...")
+		utils.ClearAllCollections(mongoDeps)
+		utils.DropOldWebappFiles()
+		err = initialization.InItDB(policyService, actionService, ruleService)
+		if err != nil {
+			fmt.Printf("failed to in it db %s", err)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			return
+		}
+		err = initialization.NewTestWebApp(policyService, sslService, webappService)
+		if err != nil {
+			fmt.Printf("failed to add test webapp %s", err)
+			closeAll(blackList, errorLogConfig, accessLogConfig)
+			return
+		}
+	} else {
+		fmt.Println("Init db not required")
+	}
+
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
@@ -219,27 +240,7 @@ func main() {
 	fmt.Println("starting admin api")
 	startAdminAPI(nodeConfig.AdminURL, actionService, policyService, sslService, webappService, appWebappService,
 		appSSLService, appPolicyService, ruleService, appRuleService, manager)
-
-	////////////////////// Инициализация БД //////////////////////
-	if getInItFlag() {
-		fmt.Println("Initialization database ...")
-		utils.ClearAllCollections(mongoDeps)
-		utils.DropOldWebappFiles()
-		err = initialization.InItDB(policyService, actionService, ruleService)
-		if err != nil {
-			fmt.Printf("failed to in it db %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
-			return
-		}
-		err = initialization.NewTestWebApp(policyService, sslService, webappService)
-		if err != nil {
-			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
-			return
-		}
-	} else {
-		fmt.Println("Init db not required")
-	}
+	/////////////////////////////////////////////////////////////////
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
