@@ -22,20 +22,10 @@ func ToPolicyDetail(d *p.Detail) dto.Detail {
 	rules := make([]dto.RuleRefView, 0, len(d.Rules))
 
 	for _, r := range d.Rules {
-		var actions []dto.ActionView
-
-		for _, a := range r.Actions {
-			actions = append(actions, dto.ActionView{
-				ID:   a.ID.Hex(),
-				Name: a.Name,
-			})
-		}
-
 		rules = append(rules, dto.RuleRefView{
 			ID:      r.ID.Hex(),
 			Name:    r.Name,
 			Enabled: r.Enabled,
-			Actions: actions,
 		})
 	}
 

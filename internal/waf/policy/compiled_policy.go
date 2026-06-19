@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"reverseproxy/internal/domain/policy"
@@ -20,7 +19,6 @@ type CompiledPolicy struct {
 	Rules []PolicyRule
 }
 
-// TODO переделать, чтобы для Rule, где нет переопределения вызывался стандартный набор функций
 func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 	actionEngine *action.ActionEngine) (*CompiledPolicy, error) {
 	compiledPolicy := &CompiledPolicy{
@@ -36,45 +34,18 @@ func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 	rules := ruleEngine.GetRulesByPolicyID(p.ID)
 	for _, compiledRule := range rules {
 		policyRule := PolicyRule{
-			Rule:    &compiledRule,
-			Actions: compiledRule.Actions,
-		}
-		ruleMap[compiledRule.ID] = policyRule
-	}
-
-	// Проходим все переопределения для правил, если переопределение не пустое - меняем список actions для правила
-	for _, ref := range p.RuleOverrides {
-		// Если правило не используется(его нет в списке p.Rules) - пропускаем, т.к. его не нужно добавлять в скомпилированную политику
-		if _, ok := ruleMap[ref.RuleID]; !ok {
-			continue
+			Rule: &compiledRule,
 		}
 
-		baseRule, ok := ruleEngine.Get(ref.RuleID)
-		if !ok {
-			return nil, fmt.Errorf("rule not found: %s", ref.RuleID.Hex())
-		}
-
+		// Если для политики есть переопределение, используем именно Actions из переопределения
 		var actions []action.Action
-
-		if len(ref.Actions) == 0 {
-			// Если переопределений нет - значит уже нет смысла продолжать, так как всё уже добавлено
-			continue
+		if v, ok := compiledRule.Overrides[p.ID]; ok {
+			actions = v
 		} else {
-			// override
-			actions = make([]action.Action, 0, len(ref.Actions))
-			for _, id := range ref.Actions {
-				act, ok := actionEngine.Get(id)
-				if !ok {
-					return nil, fmt.Errorf("action not found: %s", id.Hex())
-				}
-				actions = append(actions, act)
-			}
-			policyRule := PolicyRule{
-				Rule:    baseRule,
-				Actions: actions,
-			}
-			ruleMap[ref.RuleID] = policyRule
+			actions = compiledRule.Actions
 		}
+		policyRule.Actions = actions
+		ruleMap[compiledRule.ID] = policyRule
 	}
 
 	// Добавляем правила в политику, переопределения учитываются

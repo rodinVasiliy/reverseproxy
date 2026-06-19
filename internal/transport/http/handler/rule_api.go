@@ -119,5 +119,13 @@ func createRule(as *appRule.AppRuleService) func(c *gin.Context) {
 			return
 		}
 
+		// Создаем правило(сюда входит и компиляция и всё остальное)
+		err = as.CreateRule(c, &ruleDto)
+		if err != nil {
+			log.Printf("failed to create rule: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+		c.Status(201)
 	}
 }

@@ -1,6 +1,7 @@
 package rule
 
 import (
+	"fmt"
 	"reverseproxy/internal/domain/rule"
 	"reverseproxy/internal/waf/action"
 	"slices"
@@ -46,6 +47,18 @@ func (re *RuleEngine) Get(id primitive.ObjectID) (*CompiledRule, bool) {
 }
 
 // TODO добавить create + delete
+
+func (re *RuleEngine) Create(rule rule.Rule) error {
+	compiledRule, err := CompileRule(rule, re.actionEngine)
+	if err != nil {
+		return fmt.Errorf("failed to compile rule: %w", err)
+	}
+
+	re.mu.Lock()
+	defer re.mu.Unlock()
+	re.rules[compiledRule.ID] = compiledRule
+	return nil
+}
 
 func (re *RuleEngine) Update(rule rule.Rule) error {
 	re.mu.Lock()

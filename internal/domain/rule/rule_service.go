@@ -4,6 +4,7 @@ import (
 	"context"
 	repository "reverseproxy/internal/infrastructure/mongo"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -29,4 +30,15 @@ func (s *Service) FindById(ctx context.Context, id primitive.ObjectID) (*Rule, e
 
 func (s *Service) Update(ctx context.Context, rule *Rule) error {
 	return s.repository.Update(ctx, rule)
+}
+
+func (s *Service) FindByPolicyId(ctx context.Context, id primitive.ObjectID) ([]Rule, error) {
+	filter := bson.M{
+		"policies": id,
+	}
+	policies, err := s.repository.FindMany(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return policies, nil
 }

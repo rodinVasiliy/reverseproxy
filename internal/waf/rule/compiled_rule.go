@@ -9,14 +9,16 @@ import (
 )
 
 type CompiledRule struct {
-	ID       primitive.ObjectID
-	Name     string
-	Enabled  bool
-	Policies []primitive.ObjectID // Список политик, для которых правило включено
-	Expr     rule.Expr            // уже собранный
-	Actions  []action.Action      // уже резолвленные
+	ID        primitive.ObjectID
+	Name      string
+	Enabled   bool
+	Policies  []primitive.ObjectID                   // Список политик, для которых правило включено
+	Overrides map[primitive.ObjectID][]action.Action // Список переопределений
+	Expr      rule.Expr                              // уже собранный
+	Actions   []action.Action                        // уже резолвленные
 }
 
+// TO DO добавить Overrides
 func CompileRule(r rule.Rule, ae *action.ActionEngine) (*CompiledRule, error) {
 	expr, err := rule.BuildExpr(r.Expr)
 	if err != nil {
@@ -30,6 +32,19 @@ func CompileRule(r rule.Rule, ae *action.ActionEngine) (*CompiledRule, error) {
 			return nil, fmt.Errorf("action not found: %s", id.Hex())
 		}
 		actions = append(actions, act)
+	}
+
+	overrides := make(map[primitive.ObjectID][]action.Action)
+	for _, override := range r.Overrides {
+		actionsOverride := make([]action.Action, 0, len(override.Actions))
+		for _, actionId := range override.Actions {
+			act, ok := ae.Get(actionId)
+			if !ok {
+				return nil, fmt.Errorf("action not found: %s", actionId.Hex())
+			}
+			actionsOverride = append(actionsOverride, act)
+		}
+		overrides[override.PolicyId] = actionsOverride
 	}
 
 	return &CompiledRule{

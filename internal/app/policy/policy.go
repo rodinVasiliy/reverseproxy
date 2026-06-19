@@ -68,55 +68,23 @@ func (s *AppPolicyService) GetPolicyDetailById(ctx context.Context, id primitive
 		return nil, err
 	}
 
-	actions, err := s.actionService.FindAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-	actionsMap := sliceToMap(actions, func(a action.ActionDoc) primitive.ObjectID {
-		return a.ID
-	})
-
-	rules, err := s.ruleService.FindAll(ctx)
+	rules, err := s.ruleService.FindByPolicyId(ctx, p.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	rulesMap := sliceToMap(rules, func(r rule.Rule) primitive.ObjectID {
-		return r.ID
-	})
-
-	var detail policy.Detail
-	detail.ID = id
-	detail.Name = p.Name
-	detail.WL = p.WL
-	detail.Rules = make([]policy.PolicyRuleDetail, 0, len(rules))
-
-	for _, rr := range p.RuleOverrides {
-		r := rulesMap[rr.RuleID]
-
-		var actionIDs []primitive.ObjectID
-		if len(rr.Actions) > 0 {
-			actionIDs = rr.Actions
-		} else {
-			actionIDs = r.Actions
-		}
-
-		var actionViews []policy.ActionDetail
-		for _, aid := range actionIDs {
-			a := actionsMap[aid]
-			actionViews = append(actionViews, policy.ActionDetail{
-				ID:   a.ID,
-				Name: a.Name,
-			})
-		}
-
-		detail.Rules = append(detail.Rules, policy.PolicyRuleDetail{
-			ID:      r.ID,
-			Name:    r.Name,
-			Enabled: r.Enabled,
-			Actions: actionViews,
+	detail := policy.Detail{
+		ID:    id,
+		Name:  p.Name,
+		WL:    p.WL,
+		Rules: make([]policy.RuleDetail, 0, len(rules)),
+	}
+	for _, rule := range rules {
+		detail.Rules = append(detail.Rules, policy.RuleDetail{
+			ID:      rule.ID,
+			Name:    rule.Name,
+			Enabled: rule.Enabled,
 		})
-
 	}
 
 	return &detail, nil

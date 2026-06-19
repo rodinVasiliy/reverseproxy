@@ -13,13 +13,13 @@ type RuleDetailResponse struct {
 }
 
 type RuleDetailView struct {
-	ID                 string                  `json:"id"`
-	Name               string                  `json:"name"`
-	Enabled            bool                    `json:"enabled"`            // Включено ли правило
-	Actions            []ActionParamView       `json:"actions"`            // Список действий для правила
-	Policies           []string                `json:"policies"`           // Список использующихся политик
-	PolicyActionParams []PolicyActionParamView `json:"policyActionParams"` // Список переопределений действий для политик
-	ExprView           ExprView                `json:"expr"`               // Само выражение правила
+	ID              string               `json:"id"`
+	Name            string               `json:"name"`
+	Enabled         bool                 `json:"enabled"`         // Включено ли правило
+	Actions         []ActionParamView    `json:"actions"`         // Список действий для правила
+	Policies        []ShortPolicyView    `json:"policies"`        // Список использующихся политик
+	PolicyOverrides []PolicyOverrideView `json:"policyOverrides"` // Список переопределений действий для политик
+	ExprView        ExprView             `json:"expr"`            // Само выражение правила
 }
 
 type ActionParamView struct {
@@ -27,7 +27,7 @@ type ActionParamView struct {
 	Name string `json:"name"` // Action name
 }
 
-type PolicyActionParamView struct {
+type PolicyOverrideView struct {
 	ID      string            `json:"id"`   // Policy ID
 	Name    string            `json:"name"` // Policy Name
 	Actions []ActionParamView `json:"actions"`
@@ -72,20 +72,25 @@ func BuildRuleResponse(ruleDetail *rule.RuleDetail, actions []action.ActionDoc, 
 	}, nil
 }
 
+// TO DO - поменять названия, подумать о том, что оставить, что убрать, бардак какой-то
 func ToRuleDetailView(detail *rule.RuleDetail, policies []policy.Policy) *RuleDetailView {
 	rdv := RuleDetailView{
-		ID:                 detail.ID.Hex(),
-		Name:               detail.Name,
-		Enabled:            detail.Enabled,
-		Actions:            make([]ActionParamView, 0, len(detail.Actions)),
-		PolicyActionParams: make([]PolicyActionParamView, 0, len(detail.PolicyActionParams)),
+		ID:              detail.ID.Hex(),
+		Name:            detail.Name,
+		Enabled:         detail.Enabled,
+		Actions:         make([]ActionParamView, 0, len(detail.Actions)),
+		Policies:        make([]ShortPolicyView, 0, len(detail.Policies)),
+		PolicyOverrides: make([]PolicyOverrideView, 0, len(detail.Overrides)),
 	}
 
-	rdv.Policies = make([]string, 0, len(detail.Policies))
-	for _, policyId := range detail.Policies {
+	rdv.Policies = make([]ShortPolicyView, 0, len(detail.Policies))
+	for _, policyParam := range detail.Policies {
 		for _, policy := range policies {
-			if policy.ID == policyId {
-				rdv.Policies = append(rdv.Policies, policy.Name)
+			if policy.ID == policyParam.ID {
+				rdv.Policies = append(rdv.Policies, ShortPolicyView{
+					ID:   policyParam.ID.Hex(),
+					Name: policy.Name,
+				})
 				break
 			}
 		}
@@ -98,19 +103,26 @@ func ToRuleDetailView(detail *rule.RuleDetail, policies []policy.Policy) *RuleDe
 		})
 	}
 
-	for _, policyActionParam := range detail.PolicyActionParams {
-		papv := PolicyActionParamView{
-			ID:      policyActionParam.ID.Hex(),
-			Name:    policyActionParam.Name,
-			Actions: make([]ActionParamView, 0),
+	for _, policy := range detail.Policies {
+		rdv.Policies = append(rdv.Policies, ShortPolicyView{
+			ID:   policy.ID.Hex(),
+			Name: policy.Name,
+		})
+	}
+
+	for _, override := range detail.Overrides {
+		policyOverride := PolicyOverrideView{
+			ID:      override.ID.Hex(),
+			Name:    override.Name,
+			Actions: make([]ActionParamView, 0, len(override.Actions)),
 		}
-		for _, actionParam := range policyActionParam.Actions {
-			papv.Actions = append(papv.Actions, ActionParamView{
-				ID:   actionParam.ID.Hex(),
-				Name: actionParam.Name,
+		for _, action := range override.Actions {
+			policyOverride.Actions = append(policyOverride.Actions, ActionParamView{
+				ID:   action.ID.Hex(),
+				Name: action.Name,
 			})
 		}
-		rdv.PolicyActionParams = append(rdv.PolicyActionParams, papv)
+		rdv.PolicyOverrides = append(rdv.PolicyOverrides, policyOverride)
 	}
 
 	exprView := buildExprView(*detail.Expr)
