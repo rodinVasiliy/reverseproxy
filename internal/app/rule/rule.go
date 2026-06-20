@@ -143,8 +143,15 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 		return err
 	}
 	r.Actions = actions
+	// Обновляем политики
+	policies, err := objectIDSliceFromHexSlice(dto.Policies)
+	if err != nil {
+		return err
+	}
+	r.Policies = policies
 
 	// Обновляем список переопределений
+	r.Overrides = make([]rule.Override, 0, len(dto.PolicyOverrides))
 	for _, policyOverride := range dto.PolicyOverrides {
 		actionsOverride, err := objectIDSliceFromHexSlice(policyOverride.Actions)
 		if err != nil {
