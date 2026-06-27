@@ -48,7 +48,7 @@ type ShortPolicyView struct {
 	Name string `json:"name"`
 }
 
-func BuildRuleResponse(ruleDetail *rule.RuleDetail, actions []action.ActionDoc, policies []policy.Policy) (*RuleDetailResponse, error) {
+func getMeta(actions []action.ActionDoc, policies []policy.Policy) ([]ActionParamView, []ShortPolicyView) {
 	availableActions := make([]ActionParamView, 0, len(actions))
 	for _, a := range actions {
 		availableActions = append(availableActions, ActionParamView{
@@ -65,11 +65,25 @@ func BuildRuleResponse(ruleDetail *rule.RuleDetail, actions []action.ActionDoc, 
 		})
 	}
 
+	return availableActions, availablePolicies
+}
+
+func BuildRuleResponse(ruleDetail *rule.RuleDetail, actions []action.ActionDoc, policies []policy.Policy) (*RuleDetailResponse, error) {
+	availableActions, availablePolicies := getMeta(actions, policies)
+
 	return &RuleDetailResponse{
 		Rule:              *ToRuleDetailView(ruleDetail, policies),
 		AvailableActions:  availableActions,
 		AvailablePolicies: availablePolicies,
 	}, nil
+}
+
+func BuildRuleMeta(actions []action.ActionDoc, policies []policy.Policy) *RuleMetaResponse {
+	availableActions, availablePolicies := getMeta(actions, policies)
+	return &RuleMetaResponse{
+		AvailableActions:  availableActions,
+		AvailablePolicies: availablePolicies,
+	}
 }
 
 // TO DO - поменять названия, подумать о том, что оставить, что убрать, бардак какой-то

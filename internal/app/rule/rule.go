@@ -125,6 +125,21 @@ func (a *AppRuleService) RuleResponse(ctx context.Context, id primitive.ObjectID
 	return ruleResponse, nil
 }
 
+func (a *AppRuleService) RuleMetaResponse(ctx context.Context) (*ruleDto.RuleMetaResponse, error) {
+	actions, err := a.actionService.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	policies, err := a.policyService.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ruleMetaResponse := ruleDto.BuildRuleMeta(actions, policies)
+	return ruleMetaResponse, nil
+}
+
 func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
 	result := make(map[K]T, len(items))
 	for _, item := range items {

@@ -2,6 +2,7 @@ package policy
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
+// Модель для Edit
 type Detail struct {
 	ID    primitive.ObjectID
 	Name  string

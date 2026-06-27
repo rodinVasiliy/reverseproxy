@@ -21,6 +21,7 @@ func RegisterRuleRoutes(r *gin.RouterGroup, s *rule.Service, as *appRule.AppRule
 		g.GET("/:id", getRule(as))
 		g.PUT("/:id", editRule(s, as))
 		g.POST("", createRule(as))
+		g.GET("/meta")
 	}
 }
 
@@ -127,5 +128,17 @@ func createRule(as *appRule.AppRuleService) func(c *gin.Context) {
 			return
 		}
 		c.Status(201)
+	}
+}
+
+func getMeta(as *appRule.AppRuleService) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		meta, err := as.RuleMetaResponse(c)
+		if err != nil {
+			log.Printf("failed to get rule meta: %s", err)
+			httpx.InternalError(c)
+		}
+
+		c.JSON(http.StatusOK, meta)
 	}
 }
