@@ -21,7 +21,7 @@ func RegisterRuleRoutes(r *gin.RouterGroup, s *rule.Service, as *appRule.AppRule
 		g.GET("/:id", getRule(as))
 		g.PUT("/:id", editRule(s, as))
 		g.POST("", createRule(as))
-		g.GET("/meta")
+		g.GET("/meta", getMeta(as))
 	}
 }
 
