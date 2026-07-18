@@ -53,11 +53,16 @@ func (s *AppPolicyService) List(ctx context.Context) ([]policy.PolicyListItem, e
 	}
 
 	for _, p := range policies {
+		// Если в мапе ничего - вовзращаем пустой массив, чтобы не ломалось отображение
+		webaps, ok := webappsMap[p.ID]
+		if !ok {
+			webaps = []string{}
+		}
 		items = append(items, policy.PolicyListItem{
 			ID:      p.ID,
 			Name:    p.Name,
 			WL:      p.WL,
-			Webapps: webappsMap[p.ID],
+			Webapps: webaps,
 		})
 	}
 	return items, nil
