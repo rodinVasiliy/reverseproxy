@@ -22,6 +22,7 @@ func RegisterPolicyRoutes(r *gin.RouterGroup, s *policy.Service, aps *appPolicy.
 		g.GET("/:id", getPolicy(aps))
 		g.DELETE("/:id", deletePolicy(s, aps))
 		g.PUT("/:id", updatePolicy(s, aps))
+		g.PUT("", createPolicy(aps))
 	}
 }
 
