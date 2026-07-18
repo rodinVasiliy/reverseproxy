@@ -39,3 +39,8 @@ func (s *Service) Delete(ctx context.Context, entity *Policy) error {
 func (s *Service) Update(ctx context.Context, entity *Policy) error {
 	return s.repository.Update(ctx, entity)
 }
+
+func (s *Service) Create(ctx context.Context, entity *Policy) error {
+	_, err := s.repository.Insert(ctx, *entity)
+	return err
+}

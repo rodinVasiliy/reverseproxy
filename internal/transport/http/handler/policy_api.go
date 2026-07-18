@@ -147,3 +147,30 @@ func updatePolicy(s *policy.Service, as *appPolicy.AppPolicyService) gin.Handler
 	}
 
 }
+
+func createPolicy(as *appPolicy.AppPolicyService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var policyDTO policyDto.Dto
+		if err := c.ShouldBindJSON(&policyDTO); err != nil {
+			httpx.BadRequest(c, "invalid json body")
+			return
+		}
+		if policyDTO.WL == nil {
+			policyDTO.WL = []string{}
+		}
+
+		if err := dto.Validate.Struct(&policyDTO); err != nil {
+			handleValidationError(err, c)
+			return
+		}
+
+		err := as.Create(c, policyDTO)
+		if err != nil {
+			log.Printf("failed to create policy: %v", err)
+			httpx.InternalError(c)
+			return
+		}
+
+		c.Status(201)
+	}
+}

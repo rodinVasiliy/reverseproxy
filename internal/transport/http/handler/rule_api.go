@@ -131,6 +131,7 @@ func createRule(as *appRule.AppRuleService) func(c *gin.Context) {
 	}
 }
 
+// Список всех политик и действий
 func getMeta(as *appRule.AppRuleService) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		meta, err := as.RuleMetaResponse(c)

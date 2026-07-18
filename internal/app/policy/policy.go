@@ -6,6 +6,7 @@ import (
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
 	"reverseproxy/internal/domain/webapp"
+	policyDto "reverseproxy/internal/dto/policy"
 	engine "reverseproxy/internal/waf/policy"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -124,6 +125,14 @@ func (s *AppPolicyService) Delete(ctx context.Context, p *policy.Policy, ps *pol
 
 	s.policyEngine.Delete(*p)
 	return nil
+}
+
+func (s *AppPolicyService) Create(ctx context.Context, dto policyDto.Dto) error {
+	p := policy.Policy{
+		Name: dto.Name,
+		WL:   dto.WL,
+	}
+	return s.policyService.Create(ctx, &p)
 }
 
 func sliceToMap[T any, K comparable](items []T, keyFn func(T) K) map[K]T {
