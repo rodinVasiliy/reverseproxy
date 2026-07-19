@@ -6,9 +6,10 @@ import (
 	policy "reverseproxy/internal/domain/policy"
 	ssl "reverseproxy/internal/domain/ssl"
 	webapp "reverseproxy/internal/domain/webapp"
+	"reverseproxy/internal/waf/proxy"
 )
 
-func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) error {
+func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service, manager *proxy.Manager) error {
 	p, err := ps.FindByName(context.Background(), DEFAULT_POLICY_NAME)
 	if err != nil {
 		return fmt.Errorf("failed to get default policy %w", err)
@@ -28,6 +29,10 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service) er
 	_, err = ws.Insert(context.Background(), webApp)
 	if err != nil {
 		return fmt.Errorf("failed to add test webapp %w", err)
+	}
+	err = manager.SetProxyToManager(&webApp)
+	if err != nil {
+		return fmt.Errorf("failed to set proxy for manager: %v", err)
 	}
 	fmt.Println("New test WebApp successfully added")
 	return nil

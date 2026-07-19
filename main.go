@@ -174,7 +174,7 @@ func main() {
 			closeAll(blackList, errorLogConfig, accessLogConfig)
 			return
 		}
-		err = initialization.NewTestWebApp(policyService, sslService, webappService)
+		err = initialization.NewTestWebApp(policyService, sslService, webappService, manager)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
 			closeAll(blackList, errorLogConfig, accessLogConfig)
