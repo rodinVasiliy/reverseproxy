@@ -292,7 +292,11 @@ func main() {
 			// Может тут надо блок? Или ошибку 5**
 			return
 		}
-		proxy := manager.GetProxyForWebApp(webApp)
+		proxy, ok := manager.GetProxyForWebApp(webApp)
+		if !ok {
+			log.Printf("Failed to get proxy for request: %v", err)
+			return
+		}
 		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		log.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
