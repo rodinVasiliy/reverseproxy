@@ -298,7 +298,7 @@ func main() {
 		proxy.ServeHTTP(w, r)
 	})
 
-	// Слушаем только с nginx
+	// Слушаем только с nginx, port - порт waf, на который ему nginx пересылает запросы(nginx слушает 443 порт, а на WAF отправляет на 4443, например)
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
 	server := &http.Server{
