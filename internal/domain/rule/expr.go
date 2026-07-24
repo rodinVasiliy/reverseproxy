@@ -57,7 +57,7 @@ type Condition struct { // Реализовывает Expr
 	IsNot                bool
 	MatchType            MatchType
 	RequestParameterType string         // IP или UA, или host и т.д.
-	Raw                  string         // Исходное значение из конфигурации
+	Raw                  string         // Исходное значение из конфигурации, Если MatchEquals - берем для проверки именно это значение
 	inVals               []string       // Для MatchIn, не будет сериализоваться, нужна инициализация, чтобы поле появилось
 	regex                *regexp.Regexp // Для MatchRegex, не будет сериализоваться, нужна инициализация, чтобы поле появилось
 }
@@ -72,6 +72,8 @@ func (c *Condition) Init() error {
 			return err
 		}
 		c.regex = re
+	case MatchEquals:
+		return nil
 	default:
 		return fmt.Errorf("unknown condition type: %s", c.MatchType)
 	}

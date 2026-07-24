@@ -61,7 +61,6 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	handler.RegisterWebAppRoutes(api, webAppService, appWebappService, manager)
 	handler.RegisterRuleRoutes(api, ruleService, appRuleService)
 
-	// to do ip брать из конфигурационного файла
 	go func() {
 		if err := adminRouter.Run(url); err != nil {
 			log.Printf("admin api stopped: %v", err)
@@ -289,7 +288,8 @@ func main() {
 		webApp, err := webappService.GetWebAppForHost(r.Context(), host)
 		if err != nil {
 			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
-			// Может тут надо блок? Или ошибку 5**
+			// Будем блокировать запрос, для которого не нашлось webapp
+			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
 		proxy, ok := manager.GetProxyForWebApp(webApp)
@@ -298,7 +298,6 @@ func main() {
 			return
 		}
 		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
-		log.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
 
