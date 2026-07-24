@@ -84,12 +84,15 @@ func (c *Condition) Init() error {
 func (c *Condition) Match(requestMap map[string]string) (bool, error) {
 
 	// TODO а что, если нет значения?
+	for key, value := range requestMap {
+		fmt.Printf("key:%v | value:%v\n", key, value)
+	}
 	value, ok := requestMap[c.RequestParameterType]
 	if !ok {
-		fmt.Printf("value of %v not found", c.RequestParameterType)
+		fmt.Printf("value of %v not found\n", c.RequestParameterType)
 		return false, nil
 	}
-	fmt.Printf("value: %v ||| param: %v", value, c.Raw)
+	fmt.Printf("value: %v ||| param: %v\n", value, c.Raw)
 	result := false
 	switch c.MatchType {
 	case MatchEquals:
@@ -110,7 +113,7 @@ func (c *Condition) Match(requestMap map[string]string) (bool, error) {
 	case MatchRegex:
 		result = c.regex.MatchString(value)
 	default:
-		return false, fmt.Errorf("unknown condition type: %s", c.MatchType)
+		return false, fmt.Errorf("failed to match request, unknown condition type: %s", c.MatchType)
 	}
 	if c.IsNot {
 		return !result, nil
