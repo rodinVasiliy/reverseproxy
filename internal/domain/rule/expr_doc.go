@@ -19,12 +19,14 @@ type ExprDoc struct {
 func BuildExpr(doc ExprDoc) (Expr, error) {
 	switch doc.NodeType {
 	case "condition":
-		return &Condition{
+		condition := &Condition{
 			IsNot:                doc.IsNot,
 			MatchType:            MatchTypeFromString(doc.Match),
 			RequestParameterType: doc.Field,
 			Raw:                  doc.Raw,
-		}, nil
+		}
+		condition.Init() // Инициализация условия, здесь заполняются поля inVals или regex в зависимости от MatchType
+		return condition, nil
 	case "group":
 		children := make([]Expr, 0, len(doc.Children))
 		for _, child := range doc.Children {

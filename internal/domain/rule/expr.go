@@ -82,10 +82,6 @@ func (c *Condition) Init() error {
 
 // Match Проверяет запрос на совпадение правилу
 func (c *Condition) Match(requestMap map[string]string) (bool, error) {
-	err := c.Init()
-	if err != nil {
-		return false, err
-	}
 
 	// TODO а что, если нет значения?
 	value, ok := requestMap[c.RequestParameterType]

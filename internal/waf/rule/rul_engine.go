@@ -46,8 +46,6 @@ func (re *RuleEngine) Get(id primitive.ObjectID) (*CompiledRule, bool) {
 	return r, ok
 }
 
-// TODO добавить create + delete
-
 func (re *RuleEngine) Create(rule rule.Rule) error {
 	compiledRule, err := CompileRule(rule, re.actionEngine)
 	if err != nil {
