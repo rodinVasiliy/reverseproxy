@@ -60,10 +60,10 @@ func GetCookie(params map[string]string, name string) (string, bool) {
 	return val, ok
 }
 
-var IP = "ip"
-var HOST = "host"
-var PATH = "path"
-var URI = "uri"
-var METHOD = "method"
-var UA = "ua"
-var CountryCode = "countryCode"
+var IP = "IP"
+var HOST = "Host"
+var PATH = "Path"
+var URI = "uri" // TO DO - пока не используется видимо, возможно удалить.
+var METHOD = "Method"
+var UA = "UA"
+var CountryCode = "CountryCode"
