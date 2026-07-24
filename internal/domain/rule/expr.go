@@ -86,8 +86,10 @@ func (c *Condition) Match(requestMap map[string]string) (bool, error) {
 	// TODO а что, если нет значения?
 	value, ok := requestMap[c.RequestParameterType]
 	if !ok {
+		fmt.Printf("value of %v not found", c.RequestParameterType)
 		return false, nil
 	}
+	fmt.Printf("value: %v ||| param: %v", value, c.Raw)
 	result := false
 	switch c.MatchType {
 	case MatchEquals:
