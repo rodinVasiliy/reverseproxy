@@ -68,11 +68,9 @@ func startAdminAPI(url string, actionService *actionDoc.Service, policyService *
 	}()
 }
 
-// TO DO разобраться с логами
 func main() {
 
 	// fmt в консольку для информации - вся инфа до такого как все запустилось
-	// log - для ошибок при работе с базой и прочим
 	fmt.Println("reverse proxy ...")
 
 	nodeConfig, err := node.GetNodeConfig()
@@ -84,30 +82,39 @@ func main() {
 	port := nodeConfig.Port
 
 	errorLogFileName := filepath.Join("log", "error.log")
+	eventsLogFileName := filepath.Join("log", "events.log")
 	accessLogFileName := filepath.Join("log", "access.log")
 
-	// Тут идет настройка лог файла, в котором будут отображаться ошибки
+	// Error log - для записи всех ошибок
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
 		return
 	}
-	// Все ошибки будут логироваться в error log
 	log.SetOutput(errorLogConfig.File())
 
+	// Access log - для записи всех дошедших до WAF запросов
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
-		closeAll(nil, errorLogConfig, nil)
+		closeAll(nil, errorLogConfig, nil, nil)
 		return
 	}
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
+
+	eventsLogConfig, err := log_config.NewLogConfig(eventsLogFileName)
+	if err != nil {
+		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
+		closeAll(nil, errorLogConfig, nil, nil)
+		return
+	}
+	eventsLogger := log.New(eventsLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
 	blackList, err = bl.NewRedisBL()
 	if err != nil {
 		fmt.Printf("failed to in it bl %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 
@@ -116,7 +123,7 @@ func main() {
 	err = geo.InitGeo()
 	if err != nil {
 		fmt.Printf("failed to in it geo base %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 
@@ -125,7 +132,7 @@ func main() {
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 
@@ -134,8 +141,8 @@ func main() {
 	actionRepository := repository.NewMongoRepository[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
 	actionService := actionDoc.NewService(actionRepository)
 
-	// Сами actions, зашитые в код
-	actionRegistry := wafAction.BuildRegistry(accessLogger)
+	// Сами actions, зашитые в код. Передаем туда eventsLogger - cюда будут записываться сработки по правилам.
+	actionRegistry := wafAction.BuildRegistry(eventsLogger)
 
 	ruleRepository := repository.NewMongoRepository[rule.Rule](mongoDeps.Client, repository.DB_NAME, repository.RULE_COLLECTION)
 	ruleService := rule.NewService(ruleRepository)
@@ -157,7 +164,7 @@ func main() {
 	manager, err := manager.NewManager(webappService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -170,13 +177,13 @@ func main() {
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
+			closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 			return
 		}
 		err = initialization.NewTestWebApp(policyService, sslService, webappService, manager)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig)
+			closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 			return
 		}
 	} else {
@@ -186,21 +193,21 @@ func main() {
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all actions %s", err)
 		return
 	}
 	actionEngine := &wafAction.ActionEngine{}
 	err = actionEngine.Load(actionDocs, actionRegistry)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile actions %s", err)
 		return
 	}
 
 	rules, err := ruleService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all rules %s", err)
 		return
 	}
@@ -209,14 +216,14 @@ func main() {
 
 	err = ruleEngine.Load(rules)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile rules %s", err)
 		return
 	}
 
 	policies, err := policyService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all policies %s", err)
 		return
 	}
@@ -225,7 +232,7 @@ func main() {
 	policyEngine.SetRuleEngine(ruleEngine)
 	err = policyEngine.Load(policies)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig)
+		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile policies %s", err)
 		return
 	}
@@ -243,40 +250,52 @@ func main() {
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Proxy request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, port)
+
 		host := r.Host
 		ip := utils.GetIpFromRequest(r)
 		ok, err := blackList.Exists(ip.String())
 		if err != nil {
-			fmt.Printf("failed to check request in BL %s", err)
+			fmt.Printf("failed to check request in BL %s\n", err)
+			log.Printf("failed to check request in BL %s\n", err)
 		}
 		if ok {
 			fmt.Println("access will be denied")
+			accessLogger.Printf("403\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
 
 		// Проверяем, нужно ли блокировать запрос
 		wa, err := webappService.GetWebAppForHost(r.Context(), host)
+		// Возвращаем 404, если для запроса не удалось найти конфигурацию
 		if err != nil {
-			closeAll(blackList, errorLogConfig, accessLogConfig)
+			accessLogger.Printf("404\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
+			http.Error(w, "Not found", http.StatusNotFound)
 			fmt.Printf("failed to find webapp for host %s; host:%s\n", err, host)
 			return
 		}
+
 		policyId := wa.PolicyId
 		compiledPolicy, ok := policyEngine.Get(policyId)
 		if !ok {
-			closeAll(blackList, errorLogConfig, accessLogConfig)
+			accessLogger.Printf("404\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
+			http.Error(w, "Not found", http.StatusNotFound)
 			fmt.Printf("failed to find compiled policy by id %s\n", err)
 			return
 		}
+
 		parsedRequest := parsedRequest.NewParsedRequest(r)
-		isBlock, err := compiledPolicy.Evaluate(parsedRequest, accessLogger, blackList)
+		isBlock, err := compiledPolicy.Evaluate(parsedRequest, eventsLogger, blackList)
 		if err != nil {
-			fmt.Printf("failed to check request %s", err)
+			accessLogger.Printf("502\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			log.Printf("failed to check request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
+			fmt.Printf("failed to check request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			return
 		}
 		if isBlock {
 			fmt.Println("access will be denied")
+			accessLogger.Printf("403\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		} else {
@@ -285,16 +304,12 @@ func main() {
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", port))
 
-		webApp, err := webappService.GetWebAppForHost(r.Context(), host)
-		if err != nil {
-			fmt.Printf("failed to get web app for host %s, %s", r.Host, err)
-			// Будем блокировать запрос, для которого не нашлось webapp
-			http.Error(w, "Access Denied", http.StatusForbidden)
-			return
-		}
-		proxy, ok := manager.GetProxyForWebApp(webApp)
+		proxy, ok := manager.GetProxyForWebApp(wa)
 		if !ok {
-			log.Printf("Failed to get proxy for request: %v", err)
+			accessLogger.Printf("502\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			log.Printf("Failed to get proxy for request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
+			fmt.Printf("Failed to get proxy for request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			return
 		}
 		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
@@ -331,15 +346,16 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	closeAll(blackList, errorLogConfig, accessLogConfig)
+	closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 
 	log.Println("Server stopped")
 }
 
 // Закрываем нужные ресурсы - файл для лога и гео базу
-func closeAll(bl bl.Blacklist, errorLogConfig, accessLogConfig *log_config.LogConfig) {
+func closeAll(bl bl.Blacklist, errorLogConfig, accessLogConfig, eventsLogConfig *log_config.LogConfig) {
 	errorLogConfig.CloseLogFile()
 	accessLogConfig.CloseLogFile()
+	eventsLogConfig.CloseLogFile()
 	geo.CloseGeoDB() // подумать, может как-то по-лучше организовать работу с гео
 	bl.Close()
 }

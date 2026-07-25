@@ -11,7 +11,6 @@ type ParsedRequest struct {
 	IP          net.IP
 	Host        string
 	Path        string
-	Uri         string
 	Method      string
 	UA          string
 	CountryCode string
@@ -30,7 +29,6 @@ func NewParsedRequest(r *http.Request) *ParsedRequest {
 		Path:        r.URL.Path,
 		UA:          r.Header.Get("User-Agent"),
 		Cookies:     r.Cookies(),
-		Uri:         r.RequestURI,
 		Method:      r.Method,
 		CountryCode: countryCode,
 	}
@@ -42,7 +40,6 @@ func (rp *ParsedRequest) ToMap() map[string]string {
 		IP:          rp.IP.String(),
 		HOST:        rp.Host,
 		PATH:        rp.Path,
-		URI:         rp.Uri,
 		METHOD:      rp.Method,
 		UA:          rp.UA,
 		CountryCode: rp.CountryCode,
@@ -63,7 +60,6 @@ func GetCookie(params map[string]string, name string) (string, bool) {
 var IP = "IP"
 var HOST = "Host"
 var PATH = "Path"
-var URI = "uri" // TO DO - пока не используется видимо, возможно удалить.
 var METHOD = "Method"
 var UA = "UA"
 var CountryCode = "CountryCode"
