@@ -27,7 +27,7 @@ func NewLogConfig(logFileName string) (*LogConfig, error) {
 	return &LogConfig{file: logFile, path: logFileName}, err
 }
 
-// TODO подумать, почему я вызываю это в main и делаю метод открытым...
+// TO DO подумать, почему я вызываю это в main и делаю метод открытым...
 func (logConfig *LogConfig) CloseLogFile() {
 	if logConfig.file != nil {
 		logConfig.file.Close()

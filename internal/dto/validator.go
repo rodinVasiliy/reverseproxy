@@ -12,7 +12,7 @@ import (
 
 // Ограничиваем название файла определенным шаблоном, чтобы не было непонятных символов
 var safeFileName = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
-var upstreamRegexp = regexp.MustCompile(`^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost):\d{2,5}$`)
+var upstreamRegexp = regexp.MustCompile(`^^(http|https):\\\\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost):\d{2,5}$`)
 var hostnameRegex = regexp.MustCompile(`^([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,}$`)
 
 func certFilenameValidator(fl validator.FieldLevel) bool {

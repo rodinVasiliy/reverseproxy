@@ -91,48 +91,48 @@ func main() {
 		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
 		return
 	}
+	defer errorLogConfig.CloseLogFile()
 	log.SetOutput(errorLogConfig.File())
 
 	// Access log - для записи всех дошедших до WAF запросов
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
-		closeAll(nil, errorLogConfig, nil, nil)
 		return
 	}
+	defer accessLogConfig.CloseLogFile()
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	eventsLogConfig, err := log_config.NewLogConfig(eventsLogFileName)
 	if err != nil {
 		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
-		closeAll(nil, errorLogConfig, nil, nil)
 		return
 	}
+	defer eventsLogConfig.CloseLogFile()
 	eventsLogger := log.New(eventsLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
 	blackList, err = bl.NewRedisBL()
 	if err != nil {
 		fmt.Printf("failed to in it bl %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
+	defer blackList.Close()
 
 	// Загружаем гео базу
 	fmt.Println("loading geo base from file ...")
 	err = geo.InitGeo()
 	if err != nil {
 		fmt.Printf("failed to in it geo base %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
+	defer geo.CloseGeoDB()
 
 	fmt.Println("Getting mongo db dependencies ...")
 	// Подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
 		fmt.Printf("failed to get mongo deps %s\n", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 
@@ -164,7 +164,6 @@ func main() {
 	manager, err := manager.NewManager(webappService)
 	if err != nil {
 		fmt.Printf("failed to load waf config %s", err)
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -177,13 +176,11 @@ func main() {
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
 			fmt.Printf("failed to in it db %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 			return
 		}
 		err = initialization.NewTestWebApp(policyService, sslService, webappService, manager)
 		if err != nil {
 			fmt.Printf("failed to add test webapp %s", err)
-			closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 			return
 		}
 	} else {
@@ -193,21 +190,18 @@ func main() {
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all actions %s", err)
 		return
 	}
 	actionEngine := &wafAction.ActionEngine{}
 	err = actionEngine.Load(actionDocs, actionRegistry)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile actions %s", err)
 		return
 	}
 
 	rules, err := ruleService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all rules %s", err)
 		return
 	}
@@ -216,14 +210,12 @@ func main() {
 
 	err = ruleEngine.Load(rules)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile rules %s", err)
 		return
 	}
 
 	policies, err := policyService.FindAll(context.Background())
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to find all policies %s", err)
 		return
 	}
@@ -232,7 +224,6 @@ func main() {
 	policyEngine.SetRuleEngine(ruleEngine)
 	err = policyEngine.Load(policies)
 	if err != nil {
-		closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
 		fmt.Printf("failed to compile policies %s", err)
 		return
 	}
@@ -347,16 +338,5 @@ func main() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 
-	closeAll(blackList, errorLogConfig, accessLogConfig, eventsLogConfig)
-
 	log.Println("Server stopped")
-}
-
-// Закрываем нужные ресурсы - файл для лога и гео базу
-func closeAll(bl bl.Blacklist, errorLogConfig, accessLogConfig, eventsLogConfig *log_config.LogConfig) {
-	errorLogConfig.CloseLogFile()
-	accessLogConfig.CloseLogFile()
-	eventsLogConfig.CloseLogFile()
-	geo.CloseGeoDB() // подумать, может как-то по-лучше организовать работу с гео
-	bl.Close()
 }

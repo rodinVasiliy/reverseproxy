@@ -86,7 +86,6 @@ func BuildRuleMeta(actions []action.ActionDoc, policies []policy.Policy) *RuleMe
 	}
 }
 
-// TO DO - поменять названия, подумать о том, что оставить, что убрать, бардак какой-то
 func ToRuleDetailView(detail *rule.RuleDetail, policies []policy.Policy) *RuleDetailView {
 	rdv := RuleDetailView{
 		ID:              detail.ID.Hex(),
