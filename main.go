@@ -40,6 +40,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func fail(msg string, err error) {
+	fmt.Printf("%s: %v", msg, err) // позже уберем
+	log.Fatalf("%s: %v", msg, err)
+}
+
 func getInItFlag() bool {
 	return os.Getenv("INIT") == "1"
 }
@@ -75,7 +80,7 @@ func main() {
 
 	nodeConfig, err := node.GetNodeConfig()
 	if err != nil {
-		fmt.Printf("failed to read waf node configuration %s", err)
+		fail("failed to get node config", err)
 		return
 	}
 	// Порт прокси(waf), куда nginx будет отправлять запросы
@@ -88,7 +93,7 @@ func main() {
 	// Error log - для записи всех ошибок
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s :%s\n", errorLogFileName, err)
+		fail("failed to open error log file", err)
 		return
 	}
 	defer errorLogConfig.CloseLogFile()
@@ -97,24 +102,24 @@ func main() {
 	// Access log - для записи всех дошедших до WAF запросов
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
+		fail("failed to open access log file", err)
 		return
 	}
 	defer accessLogConfig.CloseLogFile()
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
-	eventsLogConfig, err := log_config.NewLogConfig(eventsLogFileName)
+	eventLogConfig, err := log_config.NewLogConfig(eventsLogFileName)
 	if err != nil {
-		fmt.Printf("failed to open log file %s :%s\n", accessLogFileName, err)
+		fail("failed to open event log file", err)
 		return
 	}
-	defer eventsLogConfig.CloseLogFile()
-	eventsLogger := log.New(eventsLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
+	defer eventLogConfig.CloseLogFile()
+	eventsLogger := log.New(eventLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
 	blackList, err = bl.NewRedisBL()
 	if err != nil {
-		fmt.Printf("failed to in it bl %s\n", err)
+		fail("failed to init blacklist", err)
 		return
 	}
 	defer blackList.Close()
@@ -123,7 +128,7 @@ func main() {
 	fmt.Println("loading geo base from file ...")
 	err = geo.InitGeo()
 	if err != nil {
-		fmt.Printf("failed to in it geo base %s\n", err)
+		fail("failed to init geo base", err)
 		return
 	}
 	defer geo.CloseGeoDB()
@@ -132,7 +137,7 @@ func main() {
 	// Подключаемся к монгодб
 	mongoDeps, err := config.NewMongoDeps()
 	if err != nil {
-		fmt.Printf("failed to get mongo deps %s\n", err)
+		fail("failed to get mongo deps", err)
 		return
 	}
 
@@ -163,7 +168,7 @@ func main() {
 	// Конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
 	manager, err := manager.NewManager(webappService)
 	if err != nil {
-		fmt.Printf("failed to load waf config %s", err)
+		fail("failed to load waf config", err)
 		return
 	}
 	fmt.Println("Waf Config successfully loaded")
@@ -175,12 +180,12 @@ func main() {
 		utils.DropOldWebappFiles()
 		err = initialization.InItDB(policyService, actionService, ruleService)
 		if err != nil {
-			fmt.Printf("failed to in it db %s", err)
+			fail("failed to init db", err)
 			return
 		}
 		err = initialization.NewTestWebApp(policyService, sslService, webappService, manager)
 		if err != nil {
-			fmt.Printf("failed to add test webapp %s", err)
+			fail("failed to add test webapp", err)
 			return
 		}
 	} else {
@@ -190,19 +195,19 @@ func main() {
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
-		fmt.Printf("failed to find all actions %s", err)
+		fail("failed to find all actions", err)
 		return
 	}
 	actionEngine := &wafAction.ActionEngine{}
 	err = actionEngine.Load(actionDocs, actionRegistry)
 	if err != nil {
-		fmt.Printf("failed to compile actions %s", err)
+		fail("failed to compile actions", err)
 		return
 	}
 
 	rules, err := ruleService.FindAll(context.Background())
 	if err != nil {
-		fmt.Printf("failed to find all rules %s", err)
+		fail("failed to find all rules", err)
 		return
 	}
 	ruleEngine := &wafRule.RuleEngine{}
@@ -210,13 +215,13 @@ func main() {
 
 	err = ruleEngine.Load(rules)
 	if err != nil {
-		fmt.Printf("failed to compile rules %s", err)
+		fail("failed to compile rules", err)
 		return
 	}
 
 	policies, err := policyService.FindAll(context.Background())
 	if err != nil {
-		fmt.Printf("failed to find all policies %s", err)
+		fail("failed to find all policies", err)
 		return
 	}
 	policyEngine := &wafPolicy.PolicyEngine{}
@@ -224,7 +229,7 @@ func main() {
 	policyEngine.SetRuleEngine(ruleEngine)
 	err = policyEngine.Load(policies)
 	if err != nil {
-		fmt.Printf("failed to compile policies %s", err)
+		fail("failed to compile policies %s", err)
 		return
 	}
 
@@ -246,12 +251,12 @@ func main() {
 		ip := utils.GetIpFromRequest(r)
 		ok, err := blackList.Exists(ip.String())
 		if err != nil {
-			fmt.Printf("failed to check request in BL %s\n", err)
-			log.Printf("failed to check request in BL %s\n", err)
+			fail("failed to check request in BL", err)
 		}
 		if ok {
 			fmt.Println("access will be denied")
 			accessLogger.Printf("403\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
+
 			http.Error(w, "Access Denied", http.StatusForbidden)
 			return
 		}
@@ -280,6 +285,8 @@ func main() {
 		if err != nil {
 			accessLogger.Printf("502\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
+
+			// TO DO сложить в fail
 			log.Printf("failed to check request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			fmt.Printf("failed to check request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			return
@@ -299,6 +306,8 @@ func main() {
 		if !ok {
 			accessLogger.Printf("502\t%s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
+
+			// TO DO сложить в fail
 			log.Printf("Failed to get proxy for request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			fmt.Printf("Failed to get proxy for request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			return
@@ -322,7 +331,7 @@ func main() {
 	go func() {
 		fmt.Printf("Starting proxy on %s\n", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Server failed: %v", err)
+			fail("failed to run server", err)
 			return
 		}
 	}()
