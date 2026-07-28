@@ -208,7 +208,6 @@ func listSSLFiles() gin.HandlerFunc {
 
 			name := f.Name()
 
-			// TO DO сравнить с валидацией
 			if strings.HasSuffix(name, ".pem") || strings.HasSuffix(name, ".cer") || strings.HasSuffix(name, ".crt") {
 				certs = append(certs, name)
 			}

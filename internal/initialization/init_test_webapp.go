@@ -25,7 +25,7 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service, ma
 	}
 	host := "myproxytest.site"
 	port := 443
-	webApp := webapp.WebApp{Name: "test", SSLId: sslId, PolicyId: p.ID, Port: port, Upstream: "92.168.11.202:9091", Hosts: []string{host}}
+	webApp := webapp.WebApp{Name: "test", SSLId: sslId, PolicyId: p.ID, Port: port, Upstream: "http://92.168.11.202:9091", Hosts: []string{host}}
 	id, err := ws.Insert(context.Background(), webApp)
 	if err != nil {
 		return fmt.Errorf("failed to add test webapp %w", err)

@@ -85,7 +85,7 @@ func (c *Condition) Match(requestMap map[string]string) (bool, error) {
 
 	// TODO а что, если нет значения?
 	for key, value := range requestMap {
-		fmt.Printf("key:%v | value:%v |||", key, value)
+		fmt.Printf("%v:%v ||", key, value)
 	}
 	value, ok := requestMap[c.RequestParameterType]
 	if !ok {

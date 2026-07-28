@@ -19,8 +19,8 @@ type AppRuleService struct {
 	actionService *action.Service
 	policyService *policy.Service
 
-	ruleEngine   *engine.RuleEngine
-	policyEngine *policyEngine.PolicyEngine
+	ruleEngine   *engine.RuleEngine         // для компиляции правил
+	policyEngine *policyEngine.PolicyEngine // для компиляции политик
 }
 
 func NewAppRuleService(rs *rule.Service, as *action.Service, ps *policy.Service, re *engine.RuleEngine, pe *policyEngine.PolicyEngine) *AppRuleService {

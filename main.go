@@ -312,6 +312,7 @@ func main() {
 			fmt.Printf("Failed to get proxy for request %s\t%s\t%s\t%v\tError:%v", r.Host, r.Method, r.URL.Path, port, err)
 			return
 		}
+		accessLogger.Printf("forward request to upstream: %s\t%s\t%s\t%v\n", r.Host, r.Method, r.URL.Path, port)
 		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})

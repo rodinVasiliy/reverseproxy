@@ -33,8 +33,7 @@ func NewManager(webAppService *webApp.Service) (*Manager, error) {
 }
 
 func newProxyForUpstream(upstream string) (*httputil.ReverseProxy, error) {
-	upstreamUrl := "http://" + upstream
-	url, err := url.Parse(upstreamUrl)
+	url, err := url.Parse(upstream)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse upstream %s to url %s", upstream, err)
 	}

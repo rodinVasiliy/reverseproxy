@@ -18,7 +18,7 @@ type AppPolicyService struct {
 	ruleService   *rule.Service
 	webappService *webapp.Service
 
-	policyEngine *engine.PolicyEngine
+	policyEngine *engine.PolicyEngine // для компиляции политик
 }
 
 func NewAppPolicyService(p *policy.Service, a *action.Service, r *rule.Service, w *webapp.Service, pe *engine.PolicyEngine) *AppPolicyService {

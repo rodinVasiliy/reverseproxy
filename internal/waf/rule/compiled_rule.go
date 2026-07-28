@@ -18,7 +18,6 @@ type CompiledRule struct {
 	Actions   []action.Action                        // уже резолвленные
 }
 
-// TO DO добавить Overrides
 func CompileRule(r rule.Rule, ae *action.ActionEngine) (*CompiledRule, error) {
 	expr, err := rule.BuildExpr(r.Expr)
 	if err != nil {
