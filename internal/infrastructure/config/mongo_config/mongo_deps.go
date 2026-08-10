@@ -1,4 +1,4 @@
-package config
+package mongoconfig
 
 import (
 	"context"

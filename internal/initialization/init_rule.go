@@ -6,7 +6,7 @@ import (
 	actionDoc "reverseproxy/internal/domain/action"
 	"reverseproxy/internal/domain/rule"
 	"reverseproxy/internal/waf/action"
-	parsedrequest "reverseproxy/internal/waf/parsed_request"
+	parsedrequest "reverseproxy/internal/waf/parsedrequest"
 )
 
 var (

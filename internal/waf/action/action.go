@@ -3,7 +3,7 @@ package action
 import (
 	"log"
 	bl "reverseproxy/internal/infrastructure/config/bl"
-	parsedRequest "reverseproxy/internal/waf/parsed_request"
+	parsedrequest "reverseproxy/internal/waf/parsedrequest"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,7 +20,7 @@ type Action interface {
 }
 
 type Context struct {
-	Request *parsedRequest.ParsedRequest
+	Request *parsedrequest.ParsedRequest
 	RuleId  primitive.ObjectID
 }
 

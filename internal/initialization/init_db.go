@@ -3,22 +3,22 @@ package initialization
 import (
 	"context"
 	"fmt"
-	action "reverseproxy/internal/domain/action"
-	policy "reverseproxy/internal/domain/policy"
-	rule "reverseproxy/internal/domain/rule"
+	"reverseproxy/internal/domain/action"
+	"reverseproxy/internal/domain/policy"
+	"reverseproxy/internal/domain/rule"
 )
 
-func InItDB(ps *policy.Service, as *action.Service, rs *rule.Service) error {
+func InItDB(actionService *action.Service, ruleService *rule.Service, policyService *policy.Service) error {
 	actions := getDefaultActions()
-	err := loadActionsToDB(as, actions)
+	err := loadActionsToDB(actionService, actions)
 	if err != nil {
 		return fmt.Errorf("failed to load default actions to DB: %w", err)
 	}
-	rules, err := getDefaultRules(as)
+	rules, err := getDefaultRules(actionService)
 	if err != nil {
 		return fmt.Errorf("failed to get default rules: %w", err)
 	}
-	err = loadRulesToDB(rs, rules)
+	err = loadRulesToDB(ruleService, rules)
 	if err != nil {
 		return fmt.Errorf("failed to load rules to db: %w", err)
 	}
@@ -27,7 +27,7 @@ func InItDB(ps *policy.Service, as *action.Service, rs *rule.Service) error {
 	if err != nil {
 		return fmt.Errorf("failed to get default policy: %w", err)
 	}
-	_, err = ps.Insert(context.Background(), *defaultPolicy)
+	_, err = policyService.Insert(context.Background(), *defaultPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to insert policy to db: %w", err)
 	}

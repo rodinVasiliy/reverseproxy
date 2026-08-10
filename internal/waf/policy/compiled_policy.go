@@ -6,7 +6,7 @@ import (
 	"reverseproxy/internal/domain/policy"
 	bl "reverseproxy/internal/infrastructure/config/bl"
 	"reverseproxy/internal/waf/action"
-	parsedRequest "reverseproxy/internal/waf/parsed_request"
+	parsedRequest "reverseproxy/internal/waf/parsedrequest"
 	"reverseproxy/internal/waf/rule"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"

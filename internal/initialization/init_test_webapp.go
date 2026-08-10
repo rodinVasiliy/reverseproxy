@@ -9,8 +9,8 @@ import (
 	"reverseproxy/internal/waf/proxy"
 )
 
-func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service, manager *proxy.Manager) error {
-	p, err := ps.FindByName(context.Background(), DEFAULT_POLICY_NAME)
+func NewTestWebApp(policyService *policy.Service, sslService *ssl.Service, webappService *webapp.Service, manager *proxy.Manager) error {
+	p, err := policyService.FindByName(context.Background(), DEFAULT_POLICY_NAME)
 	if err != nil {
 		return fmt.Errorf("failed to get default policy %w", err)
 	}
@@ -19,14 +19,14 @@ func NewTestWebApp(ps *policy.Service, sslS *ssl.Service, ws *webapp.Service, ma
 	keyFileName := "privkey.pem"
 	sslConfig := ssl.SSL{Name: "myproxytest.site",
 		CertFileName: certFileName, KeyFileName: keyFileName}
-	sslId, err := sslS.Insert(context.Background(), sslConfig)
+	sslId, err := sslService.Insert(context.Background(), sslConfig)
 	if err != nil {
 		return fmt.Errorf("failed to add test ssl config %w", err)
 	}
 	host := "myproxytest.site"
 	port := 443
 	webApp := webapp.WebApp{Name: "test", SSLId: sslId, PolicyId: p.ID, Port: port, Upstream: "http://92.168.11.202:9091", Hosts: []string{host}}
-	id, err := ws.Insert(context.Background(), webApp)
+	id, err := webappService.Insert(context.Background(), webApp)
 	if err != nil {
 		return fmt.Errorf("failed to add test webapp %w", err)
 	}
