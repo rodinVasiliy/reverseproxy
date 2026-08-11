@@ -53,6 +53,10 @@ type Services struct {
 	appPolicyService *appPolicyService.AppPolicyService
 	appSSLService    *appSSLService.AppSSLService
 	appRuleSerive    *appRule.AppRuleService
+
+	actionEngine *wafAction.ActionEngine
+	ruleEngine   *wafRule.RuleEngine
+	policyEngine *wafPolicy.PolicyEngine
 }
 
 func InItServices() (*Services, error) {
@@ -195,6 +199,9 @@ func InItServices() (*Services, error) {
 		appPolicyService:  appPolicyService,
 		appSSLService:     appSSLService,
 		appRuleSerive:     appRuleService,
+		actionEngine:      actionEngine,
+		ruleEngine:        ruleEngine,
+		policyEngine:      policyEngine,
 	}
 	return services, nil
 }
