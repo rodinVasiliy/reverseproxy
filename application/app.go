@@ -190,9 +190,9 @@ func (application *Application) StartProxy() {
 		proxy, ok := application.services.manager.GetProxyForWebApp(wa)
 		if !ok {
 			application.services.accessLogger.Printf("502\t%s", requestInfo)
+			err := fmt.Errorf("failed to get proxy for webapp %s", wa.ID)
+			fail("failed to get proxy", err)
 			internalError(w)
-			msg := fmt.Sprintf("failed to check request: %s", requestInfo)
-			fail(msg, err)
 			return
 		}
 		application.services.accessLogger.Printf("forward request to upstream: %s", requestInfo)

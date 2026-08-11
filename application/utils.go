@@ -2,7 +2,6 @@ package application
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -20,5 +19,4 @@ func internalError(w http.ResponseWriter) {
 
 func fail(msg string, err error) {
 	fmt.Printf("%s: %v", msg, err) // позже уберем
-	log.Fatalf("%s: %v", msg, err)
 }

@@ -176,8 +176,11 @@ func InItServices() (*Services, error) {
 	services := &Services{
 		mongoDeps:         mongoDeps,
 		accessLogger:      accessLogger,
+		accessLogConfig:   accessLogConfig,
 		errorLogger:       errorLogger,
+		errorLogConfig:    errorLogConfig,
 		eventLogger:       eventsLogger,
+		eventLogConfig:    eventLogConfig,
 		blackList:         blackList,
 		manager:           manager,
 		actionService:     actionService,
@@ -203,7 +206,15 @@ func (service *Services) Close() {
 
 	geo.CloseGeoDB()
 
-	service.accessLogConfig.CloseLogFile()
-	service.errorLogConfig.CloseLogFile()
-	service.eventLogConfig.CloseLogFile()
+	if service.accessLogConfig != nil {
+		service.accessLogConfig.CloseLogFile()
+	}
+
+	if service.errorLogConfig != nil {
+		service.errorLogConfig.CloseLogFile()
+	}
+
+	if service.eventLogConfig != nil {
+		service.eventLogConfig.CloseLogFile()
+	}
 }
