@@ -33,25 +33,28 @@ type Application struct {
 func InitializeApplication(isNeedToInitilize bool) *Application {
 	nodeConfig, err := node.GetNodeConfig()
 	if err != nil {
-		fail("failed to get node config", err)
+		fail("failed to initialize aplication: %s", err)
 		return nil
 	}
 	// Все сервисы
-	services, err := InItServices()
+	services, err := NewService()
 	if err != nil {
-		fmt.Printf("failed to init services %s", err)
+		fmt.Printf("failed to get new services: %s", err)
 		return nil
 	}
 
 	// Инициализация БД
 	if isNeedToInitilize {
-		initDatabase(services)
+		err = initDatabase(services)
+		if err != nil {
+			fmt.Printf("failed to initialize aplication: %s", err)
+		}
 	}
 
 	// Компилируем все сущности
 	compiler, err := compileAll(services)
 	if err != nil {
-		fail("failed to compile", err)
+		fail("failed to initialize aplication: %s", err)
 		return nil
 	}
 
@@ -66,21 +69,20 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 	return application
 }
 
-func initDatabase(services *Services) {
+func initDatabase(services *Services) error {
 	fmt.Println("Initialization database ...")
 	utils.ClearAllCollections(services.mongoDeps)
 	utils.DropOldWebappFiles()
 
 	err := initialization.InItDB(services.actionService, services.ruleService, services.policyService)
 	if err != nil {
-		fail("failed to init db", err)
-		return
+		return fmt.Errorf("failed to initialize db: %w", err)
 	}
 	err = initialization.NewTestWebApp(services.policyService, services.sslService, services.webappService, services.manager)
 	if err != nil {
-		fail("failed to add test webapp", err)
-		return
+		return fmt.Errorf("failed to add test webapp: %w", err)
 	}
+	return nil
 }
 
 func (application *Application) StartAdminAPI() {
@@ -95,7 +97,7 @@ func (application *Application) StartAdminAPI() {
 	handler.RegisterPolicyRoutes(api, application.services.policyService, application.services.appPolicyService)
 	handler.RegisterSSLRoutes(api, application.services.sslService, application.services.appSSLService)
 	handler.RegisterWebAppRoutes(api, application.services.webappService, application.services.appWebappService, application.services.manager)
-	handler.RegisterRuleRoutes(api, application.services.ruleService, application.services.appRuleSerive)
+	handler.RegisterRuleRoutes(api, application.services.ruleService, application.services.appRuleService)
 
 	go func() {
 		if err := adminRouter.Run(application.nodeConfig.AdminURL); err != nil {

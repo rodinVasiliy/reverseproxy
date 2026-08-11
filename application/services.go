@@ -21,6 +21,7 @@ import (
 	mongoconfig "reverseproxy/internal/infrastructure/config/mongo_config"
 	repository "reverseproxy/internal/infrastructure/mongo"
 	wafAction "reverseproxy/internal/waf/action"
+	"reverseproxy/internal/waf/compiler"
 	wafPolicy "reverseproxy/internal/waf/policy"
 	manager "reverseproxy/internal/waf/proxy"
 	wafRule "reverseproxy/internal/waf/rule"
@@ -52,14 +53,14 @@ type Services struct {
 	appWebappService *appWebapp.AppWebappService
 	appPolicyService *appPolicyService.AppPolicyService
 	appSSLService    *appSSLService.AppSSLService
-	appRuleSerive    *appRule.AppRuleService
+	appRuleService   *appRule.AppRuleService
 
 	actionEngine *wafAction.ActionEngine
 	ruleEngine   *wafRule.RuleEngine
 	policyEngine *wafPolicy.PolicyEngine
 }
 
-func InItServices() (*Services, error) {
+func inItServices() (*Services, error) {
 
 	errorLogFileName := filepath.Join("log", "error.log")
 	eventsLogFileName := filepath.Join("log", "events.log")
@@ -123,58 +124,12 @@ func InItServices() (*Services, error) {
 	webappService := webapp.NewService(webappRepository)
 	webappSyncService := appWebapp.NewWebappSyncService(sslService)
 
-	// TO DO - подумать, чтобы добавить в cancel
-	watcher := webapp.NewWatcher(webappRepository, webappSyncService)
-	go watcher.Watch(context.Background())
-
 	// Конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
 	manager, err := manager.NewManager(webappService)
 	if err != nil {
 		return nil, fmt.Errorf("failed get new manager %w", err)
 	}
 	fmt.Println("Waf Config successfully loaded")
-
-	////////////////////// Компиляция правил, политик, действий //////////////////////
-	actionDocs, err := actionService.FindAll(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all actions %w", err)
-	}
-	actionEngine := &wafAction.ActionEngine{}
-	err = actionEngine.Load(actionDocs, actionRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile actions %w", err)
-	}
-
-	rules, err := ruleService.FindAll(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all rules %w", err)
-	}
-	ruleEngine := &wafRule.RuleEngine{}
-	ruleEngine.SetActionEngine(actionEngine)
-
-	err = ruleEngine.Load(rules)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile rules %w", err)
-	}
-
-	policies, err := policyService.FindAll(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all policies %w", err)
-	}
-	policyEngine := &wafPolicy.PolicyEngine{}
-	policyEngine.SetActionEngine(actionEngine)
-	policyEngine.SetRuleEngine(ruleEngine)
-	err = policyEngine.Load(policies)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile policies %w", err)
-	}
-
-	////////////////////// Application services //////////////////////
-
-	appWebappService := appWebapp.NewService(webappService, policyService, sslService)
-	appPolicyService := appPolicyService.NewAppPolicyService(policyService, actionService, ruleService, webappService, policyEngine)
-	appSSLService := appSSLService.NewAppSSLConfiguration(sslService, webappService)
-	appRuleService := appRule.NewAppRuleService(ruleService, actionService, policyService, ruleEngine, policyEngine)
 
 	/////////////////////////////////////////////////////////////////
 	services := &Services{
@@ -195,14 +150,54 @@ func InItServices() (*Services, error) {
 		sslService:        sslService,
 		webappRepository:  webappRepository,
 		webappSyncService: webappSyncService,
-		appWebappService:  appWebappService,
-		appPolicyService:  appPolicyService,
-		appSSLService:     appSSLService,
-		appRuleSerive:     appRuleService,
-		actionEngine:      actionEngine,
-		ruleEngine:        ruleEngine,
-		policyEngine:      policyEngine,
 	}
+	return services, nil
+}
+
+func (service *Services) compileAll() error {
+	actions, err := service.actionService.FindAll(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to compile all: %w", err)
+	}
+
+	rules, err := service.ruleService.FindAll(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to compile all: %w", err)
+	}
+
+	policies, err := service.policyService.FindAll(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to compile all: %w", err)
+	}
+
+	compiler, err := compiler.Compile(actions, service.actionRegistry, rules, policies)
+	if err != nil {
+		return fmt.Errorf("failed to compile all: %w", err)
+	}
+
+	service.actionEngine = compiler.ActionCompiler
+	service.ruleEngine = compiler.RuleCompiler
+	service.policyEngine = compiler.PolicyCompiler
+	return nil
+}
+
+func (service *Services) createAppServices() {
+	service.appWebappService = appWebapp.NewService(service.webappService, service.policyService, service.sslService)
+	service.appPolicyService = appPolicyService.NewAppPolicyService(service.policyService, service.actionService, service.ruleService, service.webappService, service.policyEngine)
+	service.appSSLService = appSSLService.NewAppSSLConfiguration(service.sslService, service.webappService)
+	service.appRuleService = appRule.NewAppRuleService(service.ruleService, service.actionService, service.policyService, service.ruleEngine, service.policyEngine)
+}
+
+func NewService() (*Services, error) {
+	services, err := inItServices()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create service: %w", err)
+	}
+	err = services.compileAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create service: %w", err)
+	}
+	services.createAppServices()
 	return services, nil
 }
 
