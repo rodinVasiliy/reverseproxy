@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	appPolicyService "reverseproxy/internal/app/policy"
 	appRule "reverseproxy/internal/app/rule"
@@ -28,10 +27,13 @@ import (
 )
 
 type Services struct {
-	mongoDeps    *mongoconfig.MongoDeps
-	accessLogger *log.Logger
-	errorLogger  *log.Logger
-	eventLogger  *log.Logger
+	mongoDeps       *mongoconfig.MongoDeps
+	accessLogger    *log.Logger
+	accessLogConfig *log_config.LogConfig
+	errorLogger     *log.Logger
+	errorLogConfig  *log_config.LogConfig
+	eventLogger     *log.Logger
+	eventLogConfig  *log_config.LogConfig
 
 	actionService  *action.Service
 	actionRegistry *wafAction.Registry
@@ -39,6 +41,9 @@ type Services struct {
 	policyService  *policy.Service
 	webappService  *webapp.Service
 	sslService     *ssl.Service
+
+	webappRepository  *repository.MongoRepository[webapp.WebApp]
+	webappSyncService *appWebapp.AppWebappSyncService
 
 	blackList *bl.RedisBL
 
@@ -50,11 +55,7 @@ type Services struct {
 	appRuleSerive    *appRule.AppRuleService
 }
 
-func getInItFlag() bool {
-	return os.Getenv("INIT") == "1"
-}
-
-func InItServices() *Services {
+func InItServices() (*Services, error) {
 
 	errorLogFileName := filepath.Join("log", "error.log")
 	eventsLogFileName := filepath.Join("log", "events.log")
@@ -63,51 +64,40 @@ func InItServices() *Services {
 	// Error log - для записи всех ошибок
 	errorLogConfig, err := log_config.NewLogConfig(errorLogFileName)
 	if err != nil {
-		fail("failed to open error log file", err)
-		return nil
+		return nil, fmt.Errorf("failed to get error logger %w", err)
 	}
-	defer errorLogConfig.CloseLogFile()
 	errorLogger := log.New(errorLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	// Access log - для записи всех дошедших до WAF запросов
 	accessLogConfig, err := log_config.NewLogConfig(accessLogFileName)
 	if err != nil {
-		fail("failed to open access log file", err)
-		return nil
+		return nil, fmt.Errorf("failed to get access logger %w", err)
 	}
-	defer accessLogConfig.CloseLogFile()
 	accessLogger := log.New(accessLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	eventLogConfig, err := log_config.NewLogConfig(eventsLogFileName)
 	if err != nil {
-		fail("failed to open event log file", err)
-		return nil
+		return nil, fmt.Errorf("failed to get event logger %w", err)
 	}
-	defer eventLogConfig.CloseLogFile()
 	eventsLogger := log.New(eventLogConfig.File(), "", log.LstdFlags|log.Lmicroseconds)
 
 	var blackList *bl.RedisBL
 	blackList, err = bl.NewRedisBL()
 	if err != nil {
-		fail("failed to init blacklist", err)
-		return nil
+		return nil, fmt.Errorf("failed to get blacklist %w", err)
 	}
-	defer blackList.Close()
 
 	// Загружаем гео базу
 	fmt.Println("loading geo base from file ...")
 	err = geo.InitGeo()
 	if err != nil {
-		fail("failed to init geo base", err)
-		return nil
+		return nil, fmt.Errorf("failed to load geo base %w", err)
 	}
-	defer geo.CloseGeoDB()
 
 	// Подключаемся к монгодб
 	mongoDeps, err := mongoconfig.NewMongoDeps()
 	if err != nil {
-		fail("failed to get mongo deps", err)
-		return nil
+		return nil, fmt.Errorf("failed to connect to mongo %w", err)
 	}
 
 	actionRepository := repository.NewMongoRepository[actionDoc.ActionDoc](mongoDeps.Client, repository.DB_NAME, repository.ACTION_COLLECTION)
@@ -129,56 +119,50 @@ func InItServices() *Services {
 	webappService := webapp.NewService(webappRepository)
 	webappSyncService := appWebapp.NewWebappSyncService(sslService)
 
+	// TO DO - подумать, чтобы добавить в cancel
 	watcher := webapp.NewWatcher(webappRepository, webappSyncService)
 	go watcher.Watch(context.Background())
 
 	// Конфиг нужен, чтобы для хоста выдавать httputil.ReverseProxy
 	manager, err := manager.NewManager(webappService)
 	if err != nil {
-		fail("failed to load waf config", err)
-		return nil
+		return nil, fmt.Errorf("failed get new manager %w", err)
 	}
 	fmt.Println("Waf Config successfully loaded")
 
 	////////////////////// Компиляция правил, политик, действий //////////////////////
 	actionDocs, err := actionService.FindAll(context.Background())
 	if err != nil {
-		fail("failed to find all actions", err)
-		return nil
+		return nil, fmt.Errorf("failed to get all actions %w", err)
 	}
 	actionEngine := &wafAction.ActionEngine{}
 	err = actionEngine.Load(actionDocs, actionRegistry)
 	if err != nil {
-		fail("failed to compile actions", err)
-		return nil
+		return nil, fmt.Errorf("failed to compile actions %w", err)
 	}
 
 	rules, err := ruleService.FindAll(context.Background())
 	if err != nil {
-		fail("failed to find all rules", err)
-		return nil
+		return nil, fmt.Errorf("failed to get all rules %w", err)
 	}
 	ruleEngine := &wafRule.RuleEngine{}
 	ruleEngine.SetActionEngine(actionEngine)
 
 	err = ruleEngine.Load(rules)
 	if err != nil {
-		fail("failed to compile rules", err)
-		return nil
+		return nil, fmt.Errorf("failed to compile rules %w", err)
 	}
 
 	policies, err := policyService.FindAll(context.Background())
 	if err != nil {
-		fail("failed to find all policies", err)
-		return nil
+		return nil, fmt.Errorf("failed to get all policies %w", err)
 	}
 	policyEngine := &wafPolicy.PolicyEngine{}
 	policyEngine.SetActionEngine(actionEngine)
 	policyEngine.SetRuleEngine(ruleEngine)
 	err = policyEngine.Load(policies)
 	if err != nil {
-		fail("failed to compile policies %s", err)
-		return nil
+		return nil, fmt.Errorf("failed to compile policies %w", err)
 	}
 
 	////////////////////// Application services //////////////////////
@@ -190,22 +174,36 @@ func InItServices() *Services {
 
 	/////////////////////////////////////////////////////////////////
 	services := &Services{
-		mongoDeps:        mongoDeps,
-		accessLogger:     accessLogger,
-		errorLogger:      errorLogger,
-		eventLogger:      errorLogger,
-		blackList:        blackList,
-		manager:          manager,
-		actionService:    actionService,
-		actionRegistry:   actionRegistry,
-		ruleService:      ruleService,
-		policyService:    policyService,
-		webappService:    webappService,
-		sslService:       sslService,
-		appWebappService: appWebappService,
-		appPolicyService: appPolicyService,
-		appSSLService:    appSSLService,
-		appRuleSerive:    appRuleService,
+		mongoDeps:         mongoDeps,
+		accessLogger:      accessLogger,
+		errorLogger:       errorLogger,
+		eventLogger:       eventsLogger,
+		blackList:         blackList,
+		manager:           manager,
+		actionService:     actionService,
+		actionRegistry:    actionRegistry,
+		ruleService:       ruleService,
+		policyService:     policyService,
+		webappService:     webappService,
+		sslService:        sslService,
+		webappRepository:  webappRepository,
+		webappSyncService: webappSyncService,
+		appWebappService:  appWebappService,
+		appPolicyService:  appPolicyService,
+		appSSLService:     appSSLService,
+		appRuleSerive:     appRuleService,
 	}
-	return services
+	return services, nil
+}
+
+func (service *Services) Close() {
+	if service.blackList != nil {
+		service.blackList.Close()
+	}
+
+	geo.CloseGeoDB()
+
+	service.accessLogConfig.CloseLogFile()
+	service.errorLogConfig.CloseLogFile()
+	service.eventLogConfig.CloseLogFile()
 }

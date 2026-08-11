@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reverseproxy/internal/domain/webapp"
 	"reverseproxy/internal/infrastructure/config/node"
 	"reverseproxy/internal/initialization"
 	"reverseproxy/internal/transport/http/handler"
@@ -24,6 +25,9 @@ type Application struct {
 	nodeConfig *node.NodeConfig
 	services   *Services
 	compiler   *compiler.Compiler
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func InitializeApplication(isNeedToInitilize bool) *Application {
@@ -33,26 +37,31 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		return nil
 	}
 	// Все сервисы
-	services := InItServices()
+	services, err := InItServices()
+	if err != nil {
+		fmt.Printf("failed to init services %s", err)
+		return nil
+	}
 
 	// Инициализация БД
 	if isNeedToInitilize {
 		initDatabase(services)
 	}
 
+	// Компилируем все сущности
 	compiler, err := compileAll(services)
 	if err != nil {
 		fail("failed to compile", err)
 		return nil
 	}
 
-	// Start admin api
-	startAdminAPI(nodeConfig.AdminURL, services)
-	// Завернуть покрасивее
+	ctx, cancel := context.WithCancel(context.Background())
 	application := &Application{
 		nodeConfig: nodeConfig,
 		services:   services,
 		compiler:   compiler,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 	return application
 }
@@ -74,7 +83,7 @@ func initDatabase(services *Services) {
 	}
 }
 
-func startAdminAPI(url string, services *Services) {
+func (application *Application) StartAdminAPI() {
 	adminRouter := gin.Default()
 	adminRouter.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
@@ -82,14 +91,14 @@ func startAdminAPI(url string, services *Services) {
 		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	}))
 	api := adminRouter.Group("/admin/api")
-	handler.RegisterActionRoutes(api, services.actionService)
-	handler.RegisterPolicyRoutes(api, services.policyService, services.appPolicyService)
-	handler.RegisterSSLRoutes(api, services.sslService, services.appSSLService)
-	handler.RegisterWebAppRoutes(api, services.webappService, services.appWebappService, services.manager)
-	handler.RegisterRuleRoutes(api, services.ruleService, services.appRuleSerive)
+	handler.RegisterActionRoutes(api, application.services.actionService)
+	handler.RegisterPolicyRoutes(api, application.services.policyService, application.services.appPolicyService)
+	handler.RegisterSSLRoutes(api, application.services.sslService, application.services.appSSLService)
+	handler.RegisterWebAppRoutes(api, application.services.webappService, application.services.appWebappService, application.services.manager)
+	handler.RegisterRuleRoutes(api, application.services.ruleService, application.services.appRuleSerive)
 
 	go func() {
-		if err := adminRouter.Run(url); err != nil {
+		if err := adminRouter.Run(application.nodeConfig.AdminURL); err != nil {
 			log.Printf("admin api stopped: %v", err)
 		}
 	}()
@@ -221,4 +230,23 @@ func (application *Application) StartProxy() {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
 	log.Println("Server stopped")
+}
+
+func (application *Application) StartWatcher() {
+	watcher := webapp.NewWatcher(application.services.webappRepository, application.services.webappSyncService)
+	go watcher.Watch(application.ctx)
+}
+
+func (application *Application) Close() {
+	application.cancel()
+	if application.services == nil {
+		return
+	}
+	application.services.Close()
+}
+
+func (application *Application) Run() {
+	application.StartAdminAPI()
+	application.StartWatcher()
+	application.StartProxy()
 }

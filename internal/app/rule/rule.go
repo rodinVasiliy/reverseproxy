@@ -194,6 +194,7 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 	r.Expr = exp
 	log.Println("Expr filled")
 
+	// TO DO - завернуть отмену, если что-то пошло не так.
 	err = a.ruleService.Update(ctx, r)
 	if err != nil {
 		return err

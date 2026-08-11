@@ -12,5 +12,9 @@ func getInItFlag() bool {
 func main() {
 	isNeedToInitilize := getInItFlag()
 	app := application.InitializeApplication(isNeedToInitilize)
-	app.StartProxy()
+	if app == nil {
+		return
+	}
+	defer app.Close()
+	app.Run()
 }
