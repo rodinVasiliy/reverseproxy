@@ -51,18 +51,11 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		}
 	}
 
-	// Компилируем все сущности
-	compiler, err := compileAll(services)
-	if err != nil {
-		fail("failed to initialize aplication: %s", err)
-		return nil
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	application := &Application{
 		nodeConfig: nodeConfig,
 		services:   services,
-		compiler:   compiler,
+		compiler:   services.compiler,
 		ctx:        ctx,
 		cancel:     cancel,
 	}

@@ -9,6 +9,7 @@ import (
 
 // Секция с ГЕО
 var geoDB *geoip2.Reader
+var geoPath = "internal/infrastructure/config/geo/geo_config/dbip-country-lite-2025-09.mmdb"
 
 func CloseGeoDB() {
 	if geoDB != nil {
@@ -19,8 +20,7 @@ func CloseGeoDB() {
 
 func InitGeo() error {
 	var err error
-	// TODO в константу
-	geoDB, err = geoip2.Open("internal/infrastructure/config/geo/geo_config/dbip-country-lite-2025-09.mmdb")
+	geoDB, err = geoip2.Open(geoPath)
 	if err != nil {
 		return err
 	} else {

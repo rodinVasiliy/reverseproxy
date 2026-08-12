@@ -22,9 +22,7 @@ import (
 	repository "reverseproxy/internal/infrastructure/mongo"
 	wafAction "reverseproxy/internal/waf/action"
 	"reverseproxy/internal/waf/compiler"
-	wafPolicy "reverseproxy/internal/waf/policy"
 	manager "reverseproxy/internal/waf/proxy"
-	wafRule "reverseproxy/internal/waf/rule"
 )
 
 type Services struct {
@@ -55,9 +53,7 @@ type Services struct {
 	appSSLService    *appSSLService.AppSSLService
 	appRuleService   *appRule.AppRuleService
 
-	actionEngine *wafAction.ActionEngine
-	ruleEngine   *wafRule.RuleEngine
-	policyEngine *wafPolicy.PolicyEngine
+	compiler *compiler.Compiler
 }
 
 func inItServices() (*Services, error) {
@@ -175,17 +171,15 @@ func (service *Services) compileAll() error {
 		return fmt.Errorf("failed to compile all: %w", err)
 	}
 
-	service.actionEngine = compiler.ActionCompiler
-	service.ruleEngine = compiler.RuleCompiler
-	service.policyEngine = compiler.PolicyCompiler
+	service.compiler = compiler
 	return nil
 }
 
 func (service *Services) createAppServices() {
 	service.appWebappService = appWebapp.NewService(service.webappService, service.policyService, service.sslService)
-	service.appPolicyService = appPolicyService.NewAppPolicyService(service.policyService, service.actionService, service.ruleService, service.webappService, service.policyEngine)
+	service.appPolicyService = appPolicyService.NewAppPolicyService(service.policyService, service.actionService, service.ruleService, service.webappService, service.compiler.PolicyCompiler)
 	service.appSSLService = appSSLService.NewAppSSLConfiguration(service.sslService, service.webappService)
-	service.appRuleService = appRule.NewAppRuleService(service.ruleService, service.actionService, service.policyService, service.ruleEngine, service.policyEngine)
+	service.appRuleService = appRule.NewAppRuleService(service.ruleService, service.actionService, service.policyService, service.compiler.RuleCompiler, service.compiler.PolicyCompiler)
 }
 
 func NewService() (*Services, error) {
