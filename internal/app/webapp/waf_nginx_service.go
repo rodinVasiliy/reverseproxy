@@ -2,7 +2,6 @@ package webapp
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,7 +68,7 @@ func reloadNginx() {
 
 	cmd := exec.Command("nginx", "-t")
 	if err := cmd.Run(); err != nil {
-		log.Printf("nginx config invalid: %v\n", err)
+		fmt.Printf("nginx config invalid: %v\n", err)
 		return
 	}
 

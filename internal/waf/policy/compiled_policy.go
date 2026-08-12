@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"reverseproxy/internal/domain/policy"
@@ -57,22 +58,26 @@ func CompilePolicy(p policy.Policy, ruleEngine *rule.RuleEngine,
 	return compiledPolicy, nil
 }
 
-func checkInList(ip net.IP, list []string) bool {
+func checkInList(ip net.IP, list []string) (bool, error) {
 	for i := range list {
 		_, ipNet, err := net.ParseCIDR(list[i])
 		if err != nil {
-			log.Printf("failed to parse cidr %s %s", list[i], err)
+			return false, fmt.Errorf("failed to parse cidr %s %w", list[i], err)
 		}
 		if ipNet.Contains(ip) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // Проверяем запрос по всем правилам из политики
 func (cp *CompiledPolicy) Evaluate(req *parsedRequest.ParsedRequest, logger *log.Logger, bl *bl.RedisBL) (bool, error) {
-	if checkInList(req.IP, cp.WL) {
+	ok, err := checkInList(req.IP, cp.WL)
+	if err != nil {
+		return false, fmt.Errorf("failed to check ip in list %w", err)
+	}
+	if ok {
 		return false, nil
 	}
 

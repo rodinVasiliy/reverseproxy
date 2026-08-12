@@ -3,7 +3,6 @@ package rule
 import (
 	"context"
 	"fmt"
-	"log"
 	"reverseproxy/internal/domain/action"
 	"reverseproxy/internal/domain/policy"
 	"reverseproxy/internal/domain/rule"
@@ -188,25 +187,21 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 	if err != nil {
 		return fmt.Errorf("failed to find policy to recompile: %w", err)
 	}
-	log.Println("policyToReCompile filled")
 
 	exp := fillExprDoc(dto.Expression)
 	r.Expr = exp
-	log.Println("Expr filled")
 
 	// TO DO - завернуть отмену, если что-то пошло не так.
 	err = a.ruleService.Update(ctx, r)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update rule in database: %w", err)
 	}
-	log.Println("Rule updated in db")
 
 	// Рекомпиляция правила
 	err = a.ruleEngine.Update(*r)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update rule %w", err)
 	}
-	log.Println("Rule compiled")
 
 	// Рекомпиляция политик
 	for _, id := range policyToReCompile {
@@ -220,7 +215,6 @@ func (a *AppRuleService) UpdateRule(ctx context.Context, r *rule.Rule, dto *rule
 			return err
 		}
 	}
-	log.Println("Policies compiled")
 	return nil
 }
 

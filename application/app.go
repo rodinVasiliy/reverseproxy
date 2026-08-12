@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -39,7 +38,7 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 	// Все сервисы
 	services, err := NewService()
 	if err != nil {
-		fmt.Printf("failed to get new services: %s", err)
+		fail("failed to get new services: %s", err)
 		return nil
 	}
 
@@ -47,7 +46,8 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 	if isNeedToInitilize {
 		err = initDatabase(services)
 		if err != nil {
-			fmt.Printf("failed to initialize aplication: %s", err)
+			fail("failed to initialize aplication: %s", err)
+			return nil
 		}
 	}
 
@@ -101,7 +101,7 @@ func (application *Application) StartAdminAPI() {
 
 	go func() {
 		if err := adminRouter.Run(application.nodeConfig.AdminURL); err != nil {
-			log.Printf("admin api stopped: %v", err)
+			fmt.Printf("admin api stopped: %v", err)
 		}
 	}()
 }
@@ -139,10 +139,10 @@ func (application *Application) StartProxy() {
 		ip := utils.GetIpFromRequest(r)
 		ok, err := application.services.blackList.Exists(ip.String())
 		if err != nil {
-			fail("failed to check request in BL", err)
+			application.services.errorLogger.Printf("failed to check ip %s in BL: %s", ip.String(), err)
 		}
 		if ok {
-			fmt.Println("access will be denied")
+			application.services.eventLogger.Printf("Blacklist\t403\t%s", requestInfo)
 			application.services.accessLogger.Printf("403\t%s", requestInfo)
 			deny(w)
 			return
@@ -153,7 +153,7 @@ func (application *Application) StartProxy() {
 		if err != nil {
 			application.services.accessLogger.Printf("404\t%s", requestInfo)
 			notFound(w)
-			fmt.Printf("failed to find webapp for host: %s; host:%s\n", err, host)
+			application.services.errorLogger.Printf("failed to find webapp for host: %s; host:%s\n", err, host)
 			return
 		}
 
@@ -161,8 +161,8 @@ func (application *Application) StartProxy() {
 		compiledPolicy, ok := application.compiler.PolicyCompiler.Get(policyId)
 		if !ok {
 			application.services.accessLogger.Printf("404\t%s", requestInfo)
+			application.services.errorLogger.Printf("failed to find compiled policy by id: %s\n", err)
 			notFound(w)
-			fmt.Printf("failed to find compiled policy by id: %s\n", err)
 			return
 		}
 
@@ -171,29 +171,22 @@ func (application *Application) StartProxy() {
 		isBlock, err := compiledPolicy.Evaluate(parsedRequest, application.services.eventLogger, application.services.blackList)
 		if err != nil {
 			application.services.accessLogger.Printf("502\t%s", requestInfo)
+			application.services.errorLogger.Printf("failed to check request: %s", requestInfo)
 			internalError(w)
-
-			// TO DO сложить в fail
-			msg := fmt.Sprintf("failed to check request: %s", requestInfo)
-			fail(msg, err)
 			return
 		}
 		if isBlock {
-			fmt.Println("access will be denied")
+			// Логировать блокировку правилом не будем, если стоит Log to DB - лог появится сам
 			application.services.accessLogger.Printf("403\t%s", requestInfo)
 			deny(w)
 			return
-		} else {
-			fmt.Println("access wil not be denied")
 		}
 
 		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", application.nodeConfig.Port))
-
 		proxy, ok := application.services.manager.GetProxyForWebApp(wa)
 		if !ok {
 			application.services.accessLogger.Printf("502\t%s", requestInfo)
-			err := fmt.Errorf("failed to get proxy for webapp %s", wa.ID)
-			fail("failed to get proxy", err)
+			application.services.errorLogger.Printf("failed to get proxy for webapp %s", wa.ID)
 			internalError(w)
 			return
 		}
@@ -231,7 +224,7 @@ func (application *Application) StartProxy() {
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Printf("Server forced to shutdown: %v", err)
 	}
-	log.Println("Server stopped")
+	fmt.Println("Server stopped")
 }
 
 func (application *Application) StartWatcher() {

@@ -2,7 +2,7 @@ package webapp
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"reverseproxy/internal/domain/ssl"
 	"reverseproxy/internal/domain/webapp"
 )
@@ -20,7 +20,7 @@ func NewWebappSyncService(sslService *ssl.Service) *AppWebappSyncService {
 func (s *AppWebappSyncService) OnCreate(ctx context.Context, app webapp.WebApp) {
 	sslConfiguration, err := s.sslService.FindByID(ctx, app.SSLId)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return
 	}
 
@@ -31,7 +31,7 @@ func (s *AppWebappSyncService) OnCreate(ctx context.Context, app webapp.WebApp) 
 func (s *AppWebappSyncService) OnUpdate(ctx context.Context, app webapp.WebApp) {
 	sslConfiguration, err := s.sslService.FindByID(ctx, app.SSLId)
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 		return
 	}
 
