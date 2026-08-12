@@ -35,14 +35,13 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		fail("failed to initialize aplication: %s", err)
 		return nil
 	}
-	// Все сервисы
+
 	services, err := NewService()
 	if err != nil {
 		fail("failed to get new services: %s", err)
 		return nil
 	}
 
-	// Инициализация БД
 	if isNeedToInitilize {
 		err = initDatabase(services)
 		if err != nil {
@@ -50,6 +49,13 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 			return nil
 		}
 	}
+
+	err = services.CompileAll()
+	if err != nil {
+		fail("failed to create service: %w", err)
+	}
+
+	services.CreateAppServices()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	application := &Application{

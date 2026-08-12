@@ -150,7 +150,7 @@ func inItServices() (*Services, error) {
 	return services, nil
 }
 
-func (service *Services) compileAll() error {
+func (service *Services) CompileAll() error {
 	actions, err := service.actionService.FindAll(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to compile all: %w", err)
@@ -175,7 +175,7 @@ func (service *Services) compileAll() error {
 	return nil
 }
 
-func (service *Services) createAppServices() {
+func (service *Services) CreateAppServices() {
 	service.appWebappService = appWebapp.NewService(service.webappService, service.policyService, service.sslService)
 	service.appPolicyService = appPolicyService.NewAppPolicyService(service.policyService, service.actionService, service.ruleService, service.webappService, service.compiler.PolicyCompiler)
 	service.appSSLService = appSSLService.NewAppSSLConfiguration(service.sslService, service.webappService)
@@ -187,11 +187,6 @@ func NewService() (*Services, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create service: %w", err)
 	}
-	err = services.compileAll()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create service: %w", err)
-	}
-	services.createAppServices()
 	return services, nil
 }
 
