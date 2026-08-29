@@ -44,6 +44,20 @@ func NewMongoDeps() (*MongoDeps, error) {
 	return &MongoDeps{Config: *mongoConfig, Timeout: timeout, Client: mongoClient}, nil
 }
 
+func (m *MongoDeps) Close() error {
+	if m == nil || m.Client == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	return m.Client.Disconnect(ctx)
+}
+
 func getMongoClient(timeout time.Duration, mongoConfig *MongoConfig) (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -55,8 +69,12 @@ func getMongoClient(timeout time.Duration, mongoConfig *MongoConfig) (*mongo.Cli
 		return nil, fmt.Errorf("failed connect to mongo %w", err)
 	}
 
-	// ping чтобы убедиться, что PRIMARY найден
+	// ping чтобы убедиться, что PRIMARY найден, если выпадет ошибка - закрываем клиент
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer disconnectCancel()
+		_ = client.Disconnect(disconnectCtx)
+
 		return nil, fmt.Errorf("mongo ping failed: %w", err)
 	}
 

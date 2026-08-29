@@ -12,7 +12,7 @@ import (
 	"reverseproxy/internal/transport/http/handler"
 	"reverseproxy/internal/utils"
 	"reverseproxy/internal/waf/compiler"
-	"reverseproxy/internal/waf/parsedrequest"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +27,11 @@ type Application struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	proxyServer *http.Server
+	adminServer *http.Server
+
+	wg sync.WaitGroup
 }
 
 func InitializeApplication(isNeedToInitilize bool) *Application {
@@ -98,9 +103,18 @@ func (application *Application) StartAdminAPI() {
 	handler.RegisterWebAppRoutes(api, application.services.webappService, application.services.appWebappService, application.services.manager)
 	handler.RegisterRuleRoutes(api, application.services.ruleService, application.services.appRuleService)
 
+	application.adminServer = &http.Server{
+		Addr:    application.nodeConfig.AdminURL,
+		Handler: adminRouter,
+	}
+
 	go func() {
-		if err := adminRouter.Run(application.nodeConfig.AdminURL); err != nil {
-			fmt.Printf("admin api stopped: %v", err)
+		fmt.Printf("Starting admin API on %s\n", application.nodeConfig.AdminURL)
+		err := application.adminServer.ListenAndServe()
+
+		if err != nil && err != http.ErrServerClosed {
+			application.services.errorLogger.Printf("admin api failed: %v", err)
+			application.cancel()
 		}
 	}()
 }
@@ -130,117 +144,88 @@ func compileAll(services *Services) (*compiler.Compiler, error) {
 }
 
 func (application *Application) StartProxy() {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestInfo := fmt.Sprintf("request %s %s %s via port %d\n", r.Host, r.Method, r.URL.Path, application.nodeConfig.Port)
-		fmt.Print(requestInfo)
-
-		host := r.Host
-		ip := utils.GetIpFromRequest(r)
-		ok, err := application.services.blackList.Exists(ip.String())
-		if err != nil {
-			application.services.errorLogger.Printf("failed to check ip %s in BL: %s", ip.String(), err)
-		}
-		if ok {
-			application.services.eventLogger.Printf("Blacklist\t403\t%s", requestInfo)
-			application.services.accessLogger.Printf("403\t%s", requestInfo)
-			deny(w)
-			return
-		}
-
-		wa, err := application.services.webappService.GetWebAppForHost(r.Context(), host)
-		// Возвращаем 404, если для запроса не удалось найти конфигурацию
-		if err != nil {
-			application.services.accessLogger.Printf("404\t%s", requestInfo)
-			notFound(w)
-			application.services.errorLogger.Printf("failed to find webapp for host: %s; host:%s\n", err, host)
-			return
-		}
-
-		policyId := wa.PolicyId
-		compiledPolicy, ok := application.compiler.PolicyCompiler.Get(policyId)
-		if !ok {
-			application.services.accessLogger.Printf("404\t%s", requestInfo)
-			application.services.errorLogger.Printf("failed to find compiled policy by id: %s\n", err)
-			notFound(w)
-			return
-		}
-
-		// Проверяем, нужно ли блокировать запрос
-		parsedRequest := parsedrequest.NewParsedRequest(r)
-		isBlock, err := compiledPolicy.Evaluate(parsedRequest, application.services.eventLogger, application.services.blackList)
-		if err != nil {
-			application.services.accessLogger.Printf("502\t%s", requestInfo)
-			application.services.errorLogger.Printf("failed to check request: %s", requestInfo)
-			internalError(w)
-			return
-		}
-		if isBlock {
-			// Логировать блокировку правилом не будем, если стоит Log to DB - лог появится сам
-			application.services.accessLogger.Printf("403\t%s", requestInfo)
-			deny(w)
-			return
-		}
-
-		r.Header.Set("X-Proxy-Port", fmt.Sprintf("%d", application.nodeConfig.Port))
-		proxy, ok := application.services.manager.GetProxyForWebApp(wa)
-		if !ok {
-			application.services.accessLogger.Printf("502\t%s", requestInfo)
-			application.services.errorLogger.Printf("failed to get proxy for webapp %s", wa.ID)
-			internalError(w)
-			return
-		}
-		application.services.accessLogger.Printf("forward request to upstream: %s", requestInfo)
-		fmt.Printf("Forward request %s %s to upstream\n", r.Method, r.URL.Path)
-		proxy.ServeHTTP(w, r)
-	})
+	handler := getHandler(application)
 
 	// Слушаем только с nginx, port - порт waf, на который ему nginx пересылает запросы(nginx слушает 443 порт, а на WAF отправляет на 4443, например)
 	addr := fmt.Sprintf("127.0.0.1:%d", application.nodeConfig.Port)
 
-	server := &http.Server{
+	application.proxyServer = &http.Server{
 		Addr:    addr,
 		Handler: handler,
 	}
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		fmt.Printf("Starting proxy on %s\n", addr)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fail("failed to run server", err)
-			return
+		if err := application.proxyServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			application.services.errorLogger.Printf("proxy server failed: %v", err)
+			application.cancel()
 		}
 	}()
-
-	<-stop
-	fmt.Println("Shutting down the server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Закрываем сервер
-	if err := server.Shutdown(ctx); err != nil {
-		fmt.Printf("Server forced to shutdown: %v", err)
-	}
-	fmt.Println("Server stopped")
 }
 
 func (application *Application) StartWatcher() {
-	watcher := webapp.NewWatcher(application.services.webappRepository, application.services.webappSyncService)
-	go watcher.Watch(application.ctx)
+	watcher := webapp.NewWatcher(
+		application.services.webappRepository,
+		application.services.webappSyncService,
+	)
+
+	application.wg.Add(1)
+
+	go func() {
+		defer application.wg.Done()
+
+		watcher.Watch(application.ctx)
+	}()
 }
 
 func (application *Application) Close() {
 	application.cancel()
-	if application.services == nil {
-		return
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	if application.proxyServer != nil {
+		if err := application.proxyServer.Shutdown(ctx); err != nil {
+			fmt.Printf("failed to shutdown proxy: %v\n", err) // Если context.DeadlineExceeded - пока игнорируем
+		}
 	}
-	application.services.Close()
+
+	if application.adminServer != nil {
+		if err := application.adminServer.Shutdown(ctx); err != nil {
+			fmt.Printf("failed to shutdown admin api: %v\n", err) // Если context.DeadlineExceeded - пока игнорируем
+		}
+	}
+
+	application.wg.Wait()
+
+	if application.services != nil {
+		application.services.Close()
+	}
 }
 
 func (application *Application) Run() {
 	application.StartAdminAPI()
 	application.StartWatcher()
 	application.StartProxy()
+
+	stop := make(chan os.Signal, 1)
+
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop) // Отмена подписки на сигналы
+
+	select {
+	case sig := <-stop:
+		fmt.Printf(
+			"received signal %s, shutting down\n",
+			sig,
+		)
+
+	case <-application.ctx.Done():
+		fmt.Println("application cancelled")
+	}
+
+	application.Close()
 }

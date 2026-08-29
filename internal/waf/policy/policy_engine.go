@@ -62,13 +62,14 @@ func (pe *PolicyEngine) Get(id primitive.ObjectID) (*CompiledPolicy, bool) {
 }
 
 func (pe *PolicyEngine) Update(p policy.Policy) error {
-	pe.mu.Lock()
-	defer pe.mu.Unlock()
-
 	cp, err := CompilePolicy(p, pe.ruleEngine, pe.actionEngine)
 	if err != nil {
 		return err
 	}
+
+	pe.mu.Lock()
+	defer pe.mu.Unlock()
+
 	pe.policies[p.ID] = cp
 	return nil
 }

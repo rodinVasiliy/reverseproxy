@@ -59,13 +59,14 @@ func (re *RuleEngine) Create(rule rule.Rule) error {
 }
 
 func (re *RuleEngine) Update(rule rule.Rule) error {
-	re.mu.Lock()
-	defer re.mu.Unlock()
-
 	cr, err := CompileRule(rule, re.actionEngine)
 	if err != nil {
 		return err
 	}
+
+	re.mu.Lock()
+	defer re.mu.Unlock()
+
 	re.rules[cr.ID] = cr
 	return nil
 }

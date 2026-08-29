@@ -208,4 +208,8 @@ func (service *Services) Close() {
 	if service.eventLogConfig != nil {
 		service.eventLogConfig.CloseLogFile()
 	}
+
+	if service.mongoDeps != nil {
+		service.mongoDeps.Close()
+	}
 }
