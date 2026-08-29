@@ -47,14 +47,6 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		return nil
 	}
 
-	if isNeedToInitilize {
-		err = initDatabase(services)
-		if err != nil {
-			fail("failed to initialize aplication: %s", err)
-			return nil
-		}
-	}
-
 	err = services.CompileAll()
 	if err != nil {
 		fail("failed to create service: %w", err)
@@ -70,6 +62,15 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		ctx:        ctx,
 		cancel:     cancel,
 	}
+
+	if isNeedToInitilize {
+		err = initDatabase(services)
+		if err != nil {
+			fail("failed to initialize aplication: %s", err)
+			return nil
+		}
+	}
+
 	return application
 }
 
