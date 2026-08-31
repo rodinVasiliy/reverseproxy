@@ -34,7 +34,7 @@ type Application struct {
 	wg sync.WaitGroup
 }
 
-func InitializeApplication(isNeedToInitilize bool) *Application {
+func InitializeApplication() *Application {
 	nodeConfig, err := node.GetNodeConfig()
 	if err != nil {
 		fail("failed to initialize aplication: %s", err)
@@ -61,14 +61,6 @@ func InitializeApplication(isNeedToInitilize bool) *Application {
 		compiler:   services.compiler,
 		ctx:        ctx,
 		cancel:     cancel,
-	}
-
-	if isNeedToInitilize {
-		err = initDatabase(services)
-		if err != nil {
-			fail("failed to initialize aplication: %s", err)
-			return nil
-		}
 	}
 
 	return application
@@ -207,10 +199,17 @@ func (application *Application) Close() {
 	}
 }
 
-func (application *Application) Run() {
+func (application *Application) Run(isNeedToInitilize bool) {
 	application.StartAdminAPI()
 	application.StartWatcher()
 	application.StartProxy()
+
+	if isNeedToInitilize {
+		err := initDatabase(application.services)
+		if err != nil {
+			fail("failed to initialize aplication: %s", err)
+		}
+	}
 
 	stop := make(chan os.Signal, 1)
 

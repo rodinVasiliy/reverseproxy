@@ -11,10 +11,10 @@ func getInItFlag() bool {
 
 func main() {
 	isNeedToInitilize := getInItFlag()
-	app := application.InitializeApplication(isNeedToInitilize)
+	app := application.InitializeApplication()
 	if app == nil {
 		return
 	}
 	defer app.Close()
-	app.Run()
+	app.Run(isNeedToInitilize)
 }
